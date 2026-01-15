@@ -1,0 +1,248 @@
+// Prisma schema for People's Green Party platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  
+}
+
+enum Role {
+  Admin
+  Founder
+  SSP
+  PPC
+  APC
+  CWC
+  CWCPresident
+  CWCMember
+  ExtendedMember
+  Worker
+}
+
+enum CouncilLevel {
+  CWC
+  ALC
+  SLC
+  APC
+}
+
+enum ElectionStatus {
+  Active
+  Closed
+}
+
+enum LocalUnitType {
+  Ward
+  GramPanchayat
+}
+
+enum CommitteeType {
+  CWC
+  APC
+  PPC
+  SSP
+}
+
+model Loksabha {
+  id            Int            @id @default(autoincrement())
+  name          String         @unique
+  vidhansabhas  Vidhansabha[]
+}
+
+model Vidhansabha {
+  id           Int         @id @default(autoincrement())
+
+  name         String
+  loksabhaId   Int
+  loksabha     Loksabha    @relation(fields: [loksabhaId], references: [id])
+  localUnits   LocalUnit[]
+  elections    Election[]
+
+  @@index([loksabhaId])
+  @@unique([loksabhaId, name], name: "loksabhaId_name")
+}
+
+model LocalUnit {
+  id             Int            @id @default(autoincrement())
+  vidhansabhaId  Int
+  vidhansabha    Vidhansabha    @relation(fields: [vidhansabhaId], references: [id])
+  name           String
+  type           LocalUnitType
+  committees     Committee[]
+  users          User[]
+
+  @@index([vidhansabhaId, type])
+  @@unique([vidhansabhaId, name, type], name: "vidhansabhaId_name_type")
+}
+
+model District {
+  id        Int             @id @default(autoincrement())
+  name      String          @unique
+  gps       GramPanchayat[]
+  elections Election[]
+}
+
+model GramPanchayat {
+  id         Int      @id @default(autoincrement())
+  name       String
+  districtId Int
+  district   District @relation(fields: [districtId], references: [id])
+  wards      Ward[]
+
+  @@index([districtId])
+  @@unique([districtId, name])
+}
+
+model Ward {
+  id          Int             @id @default(autoincrement())
+  wardNumber  Int
+  gpId        Int
+  gp          GramPanchayat   @relation(fields: [gpId], references: [id])
+  users       User[]
+
+  @@unique([gpId, wardNumber])
+}
+
+model User {
+  id               Int       @id @default(autoincrement())
+  name             String
+  phone            String    @unique
+  passwordHash     String
+  authUserId       String?   @unique
+  address          String
+  wardId           Int?
+  ward             Ward?     @relation(fields: [wardId], references: [id])
+  role             Role      @default(CWC)
+  referralCode     String    @unique
+  referredByUserId Int?
+  referredBy       User?     @relation("UserReferrals", fields: [referredByUserId], references: [id])
+  recruits         User[]    @relation("UserReferrals")
+  isActive         Boolean   @default(true)
+  localUnitId      Int?
+  localUnit        LocalUnit? @relation(fields: [localUnitId], references: [id])
+  committeeMemberships CommitteeMember[]
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  photoUrl         String?
+  memberId         String?   @unique
+
+  candidates       Candidate[]
+  votes            Vote[]    @relation("UserVotes")
+  receivedVotes    Vote[]    @relation("CandidateVotes")
+  auditLogs        AuditLog[] @relation("AuditActor")
+  ballotSubmissions BallotSubmission[]
+
+  @@index([referredByUserId])
+  @@index([role])
+  @@index([wardId])
+  @@index([localUnitId])
+}
+
+model Election {
+  id           Int            @id @default(autoincrement())
+  councilLevel CouncilLevel
+  position     String         @default("President")
+  status       ElectionStatus @default(Active)
+  openedAt     DateTime?      @default(now())
+  closedAt     DateTime?
+  districtId   Int?
+  district     District?      @relation(fields: [districtId], references: [id])
+  vidhansabhaId Int?
+  vidhansabha   Vidhansabha?  @relation(fields: [vidhansabhaId], references: [id])
+
+  candidates   Candidate[]
+  votes        Vote[]
+  ballotSubmissions BallotSubmission[]
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([districtId])
+  @@index([vidhansabhaId])
+}
+
+model Candidate {
+  id          Int      @id @default(autoincrement())
+  electionId  Int
+  userId      Int
+  election    Election @relation(fields: [electionId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@unique([electionId, userId])
+}
+
+model Vote {
+  id               Int      @id @default(autoincrement())
+  electionId       Int
+  voterUserId      Int
+  candidateUserId  Int
+
+  election         Election @relation(fields: [electionId], references: [id])
+  voter            User     @relation("UserVotes", fields: [voterUserId], references: [id])
+  candidate        User     @relation("CandidateVotes", fields: [candidateUserId], references: [id])
+
+  createdAt        DateTime @default(now())
+
+  @@unique([electionId, voterUserId, candidateUserId])
+}
+
+model BallotSubmission {
+  id          Int      @id @default(autoincrement())
+  electionId  Int
+  voterUserId Int
+  createdAt   DateTime @default(now())
+
+  election    Election @relation(fields: [electionId], references: [id])
+  voter       User     @relation(fields: [voterUserId], references: [id])
+
+  @@unique([electionId, voterUserId])
+}
+
+model AuditLog {
+  id           Int      @id @default(autoincrement())
+  actorUserId  Int?
+  actor        User?    @relation("AuditActor", fields: [actorUserId], references: [id])
+  action       String
+  entityType   String
+  entityId     String
+  reason       String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([actorUserId])
+}
+
+// Partial unique Chief Worker per ward can be enforced via DB index migration:
+// CREATE UNIQUE INDEX uniq_chief_worker_per_ward ON users(ward_id) WHERE role = 'ChiefWorker' AND is_active = true;
+
+model Committee {
+  id           Int           @id @default(autoincrement())
+  name         String
+  type         CommitteeType
+  localUnitId  Int
+  localUnit    LocalUnit     @relation(fields: [localUnitId], references: [id])
+  members      CommitteeMember[]
+
+  @@index([localUnitId])
+  @@unique([name, localUnitId, type])
+}
+
+model CommitteeMember {
+  userId      Int
+  committeeId Int
+  role        Role?
+  isPresident Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id])
+  committee   Committee @relation(fields: [committeeId], references: [id])
+
+  @@id([userId, committeeId])
+  @@index([committeeId])
+}
+
