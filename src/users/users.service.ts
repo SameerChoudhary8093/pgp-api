@@ -21,8 +21,24 @@ export class UsersService {
   constructor(private prisma: PrismaService, private audit: AuditService) { }
 
   async register(dto: RegisterDto) {
+    // Normalize phone: keep only last 10 digits for a consistent internal format
+    const searchPhone = dto.phone.replace(/[^0-9]/g, '').slice(-10);
+    if (searchPhone.length < 10) throw new BadRequestException('Invalid phone number. Must be at least 10 digits.');
+
+    // Use the normalized 10-digit number or a standard +91 format for storage
+    const normalizedPhone = `+91${searchPhone}`;
+
     // Ensure phone is unique
-    const existing = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: dto.phone },
+          { phone: searchPhone },
+          { phone: `0${searchPhone}` },
+          { phone: normalizedPhone },
+        ]
+      }
+    });
     if (existing) throw new BadRequestException('Phone already registered');
 
     // Validate location
@@ -68,7 +84,7 @@ export class UsersService {
     const user = await this.prisma.user.create({
       data: {
         name: dto.name,
-        phone: dto.phone,
+        phone: normalizedPhone,
         address: dto.address,
         wardId: dto.wardId ?? undefined,
         localUnitId: localUnitId ?? undefined,
@@ -86,9 +102,29 @@ export class UsersService {
 
   async login(phone: string, plain: string) {
     if (!phone || !plain) throw new BadRequestException('Phone and password required');
-    const user = await this.prisma.user.findUnique({ where: { phone } });
+
+    // Normalize phone: keep only the last 10 digits
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    if (cleanPhone.length < 10) throw new BadRequestException('Invalid phone number format');
+
+    const searchPhone = cleanPhone.slice(-10);
+    const standardFormat = `+91${searchPhone}`;
+
+    // Try finding by exact match or by common variations
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: phone },                          // Exact as passed
+          { phone: searchPhone },                    // 10 digits
+          { phone: `0${searchPhone}` },               // Leading 0
+          { phone: standardFormat },                 // With +91
+          { phone: `+91 ${searchPhone.slice(0, 5)} ${searchPhone.slice(5)}` }, // With space (e.g. +91 98765 43210)
+        ]
+      }
+    });
+
     if (!user) {
-      this.logger.warn(`Login failed: User not found for phone '${phone}'`);
+      this.logger.warn(`Login failed: User not found for phone '${phone}' (search queries: ${searchPhone})`);
       throw new BadRequestException('Invalid credentials - User not found');
     }
 

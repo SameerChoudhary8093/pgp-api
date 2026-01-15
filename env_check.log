@@ -1,0 +1,7 @@
+DATABASE_URL=postgresql://postgres:pgp%40123jaipur@db.jgtseacyfwgbpltvlxno.supabase.co:5432/postgres
+DIRECT_URL=postgresql://postgres:pgp%40123jaipur@db.jgtseacyfwgbpltvlxno.supabase.co:5432/postgres
+NODE_ENV=production
+PORT=3002
+JWT_SECRET=replace-with-a-strong-secret-key
+SUPABASE_JWKS_URL=https://jgtseacyfwgbpltvlxno.supabase.co/auth/v1/jwks
+CORS_ORIGIN=https://pgp-website.vercel.app

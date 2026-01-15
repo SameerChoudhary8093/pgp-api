@@ -1,0 +1,27 @@
+import { PrismaService } from '../prisma.service';
+export declare class GeoService {
+    private prisma;
+    constructor(prisma: PrismaService);
+    loksabhas(): import(".prisma/client").Prisma.PrismaPromise<{
+        id: number;
+        name: string;
+    }[]>;
+    vidhansabhas(loksabhaId: number): import(".prisma/client").Prisma.PrismaPromise<{
+        id: number;
+        name: string;
+    }[]>;
+    localUnits(vidhansabhaId: number, type?: string): import(".prisma/client").Prisma.PrismaPromise<{
+        id: number;
+        name: string;
+        type: import(".prisma/client").$Enums.LocalUnitType;
+    }[]>;
+    qaCounts(): Promise<{
+        loksabhas: number;
+        vidhansabhas: number;
+        localUnits: number;
+        byType: {
+            Ward: number;
+            GramPanchayat: number;
+        };
+    }>;
+}
