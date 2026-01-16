@@ -1,1 +1,3 @@
-export default function handler(req: any, res: any): void;
+declare const NestFactory: any;
+declare const AppModule: any;
+declare let cachedServer: any;

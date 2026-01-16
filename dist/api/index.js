@@ -1,9 +1,13 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = handler;
-function handler(req, res) {
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/plain');
-    res.end('OK from Vercel');
-}
+const { NestFactory } = require('@nestjs/core');
+const { AppModule } = require('../src/app.module');
+let cachedServer;
+module.exports = async (req, res) => {
+    if (!cachedServer) {
+        const app = await NestFactory.create(AppModule);
+        app.enableCors({ origin: true, credentials: true });
+        await app.init();
+        cachedServer = app.getHttpAdapter().getInstance();
+    }
+    return cachedServer(req, res);
+};
 //# sourceMappingURL=index.js.map
