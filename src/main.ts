@@ -40,20 +40,16 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
 }
 
 // Export for Vercel
-export default async (req: any, res: any) => {
+const handler = async (req: any, res: any) => {
   const app = await bootstrap();
   return app(req, res);
 };
 
-// Keep original bootstrap call for local if not Vercel
-if (!process.env.VERCEL) {
-  const startLocal = async () => {
-    const app = await NestFactory.create<NestExpressApplication>(AppModule);
-    app.enableCors({ origin: true, credentials: true });
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-    app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads/' });
-    await app.listen(process.env.PORT ? Number(process.env.PORT) : 3002);
-  };
-  startLocal();
+export default handler;
+
+// Force commonjs export for Vercel to ensure it finds the entry point
+if (typeof module !== 'undefined') {
+  module.exports = handler;
 }
+
 

@@ -29,18 +29,12 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
         const server = await core_1.NestFactory.create(app_module_1.AppModule);
     });
 }
-exports.default = async (req, res) => {
+const handler = async (req, res) => {
     const app = await bootstrap();
     return app(req, res);
 };
-if (!process.env.VERCEL) {
-    const startLocal = async () => {
-        const app = await core_1.NestFactory.create(app_module_1.AppModule);
-        app.enableCors({ origin: true, credentials: true });
-        app.useGlobalPipes(new common_1.ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-        app.useStaticAssets((0, path_1.join)(__dirname, '..', 'uploads'), { prefix: '/uploads/' });
-        await app.listen(process.env.PORT ? Number(process.env.PORT) : 3002);
-    };
-    startLocal();
+exports.default = handler;
+if (typeof module !== 'undefined') {
+    module.exports = handler;
 }
 //# sourceMappingURL=main.js.map
