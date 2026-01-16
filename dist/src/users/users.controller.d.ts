@@ -36,8 +36,8 @@ export declare class UsersController {
         id: number;
         name: string;
         role: import(".prisma/client").$Enums.Role;
-        photoUrl: string | null;
         memberId: string | null;
+        photoUrl: string | null;
     }>;
     myRecruitmentProgress(req: any): Promise<{
         role: string;
