@@ -184,39 +184,58 @@ let UsersService = UsersService_1 = class UsersService {
         return { total, recruits };
     }
     async recruitmentProgress(userId) {
-        const [total, user] = await Promise.all([
-            this.prisma.user.count({ where: { referredByUserId: userId } }),
-            this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } }),
-        ]);
-        const role = user?.role ?? 'Member';
-        let target = 0;
-        if (['CWCPresident', 'CWCMember', 'ExtendedMember'].includes(role)) {
-            target = 5;
+        try {
+            const [total, user] = await Promise.all([
+                this.prisma.user.count({ where: { referredByUserId: userId } }),
+                this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } }),
+            ]);
+            const role = user?.role ?? 'Member';
+            let target = 0;
+            if (['CWCPresident', 'CWCMember', 'ExtendedMember'].includes(role)) {
+                target = 5;
+            }
+            else {
+                target = 21;
+            }
+            const remaining = Math.max(target - total, 0);
+            return { role, total, target, remaining };
         }
-        else {
-            target = 21;
+        catch (error) {
+            if (this.logger) {
+                this.logger.error(`recruitmentProgress failed for user ${userId}:`, error);
+            }
+            else {
+                console.error(`recruitmentProgress failed for user ${userId}:`, error);
+            }
+            return { role: 'Member', total: 0, target: 21, remaining: 21 };
         }
-        const remaining = Math.max(target - total, 0);
-        return { role, total, target, remaining };
     }
     async summary(userId) {
-        if (!userId || Number.isNaN(userId)) {
-            throw new common_1.BadRequestException('Invalid user id for summary');
+        if (!userId || Number.isNaN(Number(userId))) {
+            console.warn(`Summary requested for invalid userId: ${userId}`);
+            return { user: null, recruitsCount: 0, votesCast: 0 };
         }
-        const baseUser = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-                id: true,
-                name: true,
-                phone: true,
-                role: true,
-                referralCode: true,
-                memberId: true,
-                photoUrl: true,
-                wardId: true,
-                localUnitId: true,
-            },
-        });
+        let baseUser;
+        try {
+            baseUser = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    name: true,
+                    phone: true,
+                    role: true,
+                    referralCode: true,
+                    memberId: true,
+                    photoUrl: true,
+                    wardId: true,
+                    localUnitId: true,
+                },
+            });
+        }
+        catch (e) {
+            this.logger.error(`Summary: Failed to fetch user ${userId}`, e);
+            throw new common_1.BadRequestException('Failed to load user data');
+        }
         if (!baseUser)
             throw new common_1.BadRequestException('User not found');
         let ward = null;

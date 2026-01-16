@@ -156,48 +156,68 @@ export class UsersService {
   }
 
   async recruitmentProgress(userId: number) {
-    const [total, user] = await Promise.all([
-      this.prisma.user.count({ where: { referredByUserId: userId } }),
-      this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } }),
-    ]);
-    const role = user?.role ?? 'Member';
+    try {
+      const [total, user] = await Promise.all([
+        this.prisma.user.count({ where: { referredByUserId: userId } }),
+        this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } }),
+      ]);
+      const role = (user?.role as string) ?? 'Member';
 
-    let target = 0;
-    // "Senior Members target 5 workers"
-    if (['CWCPresident', 'CWCMember', 'ExtendedMember'].includes(role)) {
-      target = 5;
-    }
-    // "Workers/Members Target 21 members" (updated from 20)
-    else {
-      target = 21;
-    }
+      let target = 0;
+      // "Senior Members (CWC/Extended) target 5 workers"
+      if (['CWCPresident', 'CWCMember', 'ExtendedMember'].includes(role)) {
+        target = 5;
+      }
+      // "Workers/Members Target 21 members"
+      else {
+        target = 21;
+      }
 
-    const remaining = Math.max(target - total, 0);
-    return { role, total, target, remaining };
+      const remaining = Math.max(target - total, 0);
+      return { role, total, target, remaining };
+    } catch (error) {
+      // Safely log error even if logger is undefined (though it shouldn't be)
+      if (this.logger) {
+        this.logger.error(`recruitmentProgress failed for user ${userId}:`, error);
+      } else {
+        console.error(`recruitmentProgress failed for user ${userId}:`, error);
+      }
+      // Return safe default so dashboard doesn't crash
+      return { role: 'Member', total: 0, target: 21, remaining: 21 };
+    }
   }
 
   async summary(userId: number) {
-    if (!userId || Number.isNaN(userId)) {
-      throw new BadRequestException('Invalid user id for summary');
+    if (!userId || Number.isNaN(Number(userId))) {
+      // Instead of throwing, return a safe fallback or allow the logic to proceed with 0
+      // throw new BadRequestException('Invalid user id for summary');
+      console.warn(`Summary requested for invalid userId: ${userId}`);
+      return { user: null, recruitsCount: 0, votesCast: 0 };
     }
 
     // Some environments have an incomplete DB (missing Ward/LocalUnit/etc tables).
     // Prisma will throw P2021 for missing tables if we select relations.
     // To keep the dashboard unblocked, fetch scalar fields first, then best-effort relations.
-    const baseUser = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        role: true,
-        referralCode: true,
-        memberId: true,
-        photoUrl: true,
-        wardId: true,
-        localUnitId: true,
-      },
-    });
+    let baseUser;
+    try {
+      baseUser = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          role: true,
+          referralCode: true,
+          memberId: true,
+          photoUrl: true,
+          wardId: true,
+          localUnitId: true,
+        },
+      });
+    } catch (e) {
+      this.logger.error(`Summary: Failed to fetch user ${userId}`, e);
+      throw new BadRequestException('Failed to load user data');
+    }
 
     if (!baseUser) throw new BadRequestException('User not found');
 

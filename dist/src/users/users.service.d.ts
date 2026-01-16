@@ -36,14 +36,18 @@ export declare class UsersService {
         remaining: number;
     }>;
     summary(userId: number): Promise<{
+        user: null;
+        recruitsCount: number;
+        votesCast: number;
+    } | {
         user: {
-            id: number;
-            name: string;
-            phone: string;
-            role: import(".prisma/client").$Enums.Role;
-            referralCode: string;
-            memberId: string | null;
-            photoUrl: string | null;
+            id: any;
+            name: any;
+            phone: any;
+            role: any;
+            referralCode: any;
+            memberId: any;
+            photoUrl: any;
             ward: any;
             localUnit: any;
         };
