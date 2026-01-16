@@ -1,25 +1,31 @@
-# apps/api/Dockerfile
+# Use Node 18 Alpine as the base
 FROM node:18-alpine
 
+# Install OpenSSL 1.1.x and other dependencies for Prisma
+# We use the community repository because openssl1.1-compat is there
+RUN apk add --no-cache openssl1.1-compat
+
+# Set the working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+COPY prisma ./prisma/
 
 # Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy the rest of the application code
 COPY . .
 
-# Generate Prisma Client (Crucial for your DB!)
+# Generate Prisma Client (This is the critical step)
 RUN npx prisma generate
 
-# Build the app
+# Build the NestJS app
 RUN npm run build
 
 # Expose the port
 EXPOSE 3002
 
-# Start the app
+# Start the application
 CMD ["npm", "run", "start:prod"]
