@@ -30,8 +30,16 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     });
 }
 const handler = async (req, res) => {
-    const app = await bootstrap();
-    return app(req, res);
+    try {
+        const app = await bootstrap();
+        return app(req, res);
+    }
+    catch (err) {
+        console.error('Bootstrap error:', err);
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: err.message, stack: err.stack }));
+    }
 };
 exports.default = handler;
 if (typeof module !== 'undefined') {

@@ -41,8 +41,15 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
 
 // Export for Vercel
 const handler = async (req: any, res: any) => {
-  const app = await bootstrap();
-  return app(req, res);
+  try {
+    const app = await bootstrap();
+    return app(req, res);
+  } catch (err: any) {
+    console.error('Bootstrap error:', err);
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ error: err.message, stack: err.stack }));
+  }
 };
 
 export default handler;
