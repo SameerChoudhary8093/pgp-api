@@ -1,9 +1,8 @@
-# Use Node 18 Alpine as the base
-FROM node:18-alpine
+# Use Node 18 Debian Bookworm (Slim)
+FROM node:18-bookworm-slim
 
-# Install OpenSSL 1.1.x and other dependencies for Prisma
-# We use the community repository because openssl1.1-compat is there
-RUN apk add --no-cache openssl1.1-compat
+# Install OpenSSL 3.0 and CA certificates
+RUN apt-get update -y && apt-get install -y openssl ca-certificates
 
 # Set the working directory
 WORKDIR /app
@@ -18,7 +17,7 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
-# Generate Prisma Client (This is the critical step)
+# Generate Prisma Client
 RUN npx prisma generate
 
 # Build the NestJS app
