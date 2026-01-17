@@ -1,10 +1,46 @@
 import 'reflect-metadata';
-import 'dotenv/config';
-import { NestFactory } from '@nestjs/core';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Explicitly load .env from the current directory
+console.log('Current CWD:', process.cwd());
+console.log('Current __dirname:', __dirname);
+
+let envPath = path.resolve(process.cwd(), '.env');
+let result = dotenv.config({ path: envPath });
+
+if (result.error) {
+  console.warn('Failed to load .env from CWD. Trying relative to __dirname...');
+  // __dirname is usually dist/src. We need to go up to apps/api root.
+  envPath = path.resolve(__dirname, '../../.env');
+  result = dotenv.config({ path: envPath });
+}
+
+if (result.error) {
+  console.log('CRITICAL: Error loading .env file from ' + envPath, result.error);
+} else {
+  console.log('.env loaded successfully from ' + envPath + '. DATABASE_URL is ' + (process.env.DATABASE_URL ? 'set' : 'MISSING'));
+}
+
+// Fallback hardcoded values
+if (!process.env.DATABASE_URL) {
+  console.warn('Applying Hardcoded Fallback for DATABASE_URL');
+  process.env.DATABASE_URL = 'postgresql://postgres:pgp%40123jaipur@db.jgtseacyfwgbpltvlxno.supabase.co:6543/postgres?pgbouncer=true';
+}
+if (!process.env.SUPABASE_JWKS_URL) {
+  console.warn('Applying Hardcoded Fallback for SUPABASE_JWKS_URL');
+  process.env.SUPABASE_JWKS_URL = 'https://jgtseacyfwgbpltvlxno.supabase.co/auth/v1/jwks';
+}
+if (!process.env.AUTH_DEV_MODE) {
+  process.env.AUTH_DEV_MODE = 'true';
+}
+
+import { NestFactory, HttpAdapterHost } from '@nestjs/core'; // Combined import
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { AllExceptionsFilter } from './all-exceptions.filter'; // moved here
 
 let cachedApp: any;
 
@@ -15,10 +51,17 @@ async function bootstrap() {
       origin: true,
       credentials: true,
     });
+
+    // Global Pipes
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 
+    // Global Exception Filter
+    const httpAdapter = app.get(HttpAdapterHost);
+    app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
+
     // Serve uploads folder statically
-    app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    // Use process.cwd() to match the upload service path (apps/api/uploads)
+    app.useStaticAssets(join(process.cwd(), 'uploads'), {
       prefix: '/uploads/',
     });
 
@@ -32,10 +75,8 @@ async function bootstrap() {
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   bootstrap().then(async (app) => {
     const port = process.env.PORT ? Number(process.env.PORT) : 3002;
-    const server = await NestFactory.create<NestExpressApplication>(AppModule);
-    // We recreate it for local listen to keep it simple or just reuse cachedApp with listen
-    // But for simplicity in Vercel environment, we export.
-    // Let's just use a simple condition.
+    await app.listen(port);
+    console.log(`Server listening on port ${port}`);
   });
 }
 

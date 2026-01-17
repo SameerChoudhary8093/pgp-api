@@ -52,6 +52,19 @@ export declare class UsersController {
     uploadMyPhoto(req: any, file: any): Promise<{
         photoUrl: string | null;
     }>;
+    deleteMyPhoto(req: any): Promise<{
+        photoUrl: null;
+    }>;
+    myRecruits(req: any, take?: string): Promise<{
+        total: number;
+        recruits: {
+            name: string;
+            phone: string;
+            createdAt: Date;
+            photoUrl: string | null;
+            id: number;
+        }[];
+    }>;
     recruits(id: number, take?: string): Promise<{
         total: number;
         recruits: {

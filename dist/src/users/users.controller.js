@@ -65,6 +65,15 @@ let UsersController = class UsersController {
         const userId = req?.user?.id;
         return this.usersService.uploadProfilePhoto(userId, file);
     }
+    deleteMyPhoto(req) {
+        const userId = req?.user?.id;
+        return this.usersService.removeProfilePhoto(userId);
+    }
+    myRecruits(req, take) {
+        const userId = req?.user?.id;
+        const limit = Math.min(Math.max(parseInt(take || '50', 10) || 50, 1), 200);
+        return this.usersService.recruits(userId, limit);
+    }
     recruits(id, take) {
         const limit = Math.min(Math.max(parseInt(take || '50', 10) || 50, 1), 200);
         return this.usersService.recruits(id, limit);
@@ -137,6 +146,23 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "uploadMyPhoto", null);
+__decorate([
+    (0, common_1.Delete)('me/photo'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], UsersController.prototype, "deleteMyPhoto", null);
+__decorate([
+    (0, common_1.Get)('me/recruits'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Query)('take')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], UsersController.prototype, "myRecruits", null);
 __decorate([
     (0, common_1.Get)(':id/recruits'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),

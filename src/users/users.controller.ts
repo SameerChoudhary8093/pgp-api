@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards, Patch, UploadedFile, UseInterceptors, HttpException, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards, Patch, UploadedFile, UseInterceptors, HttpException, HttpStatus } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { RegisterDto } from './dto/register.dto';
 import { AuthGuard } from '../auth/auth.guard';
@@ -66,6 +66,21 @@ export class UsersController {
   uploadMyPhoto(@Req() req: any, @UploadedFile() file: any) {
     const userId = req?.user?.id;
     return this.usersService.uploadProfilePhoto(userId, file);
+  }
+
+  @Delete('me/photo')
+  @UseGuards(AuthGuard)
+  deleteMyPhoto(@Req() req: any) {
+    const userId = req?.user?.id;
+    return this.usersService.removeProfilePhoto(userId);
+  }
+
+  @Get('me/recruits')
+  @UseGuards(AuthGuard)
+  myRecruits(@Req() req: any, @Query('take') take?: string) {
+    const userId = req?.user?.id;
+    const limit = Math.min(Math.max(parseInt(take || '50', 10) || 50, 1), 200);
+    return this.usersService.recruits(userId, limit);
   }
 
   @Get(':id/recruits')

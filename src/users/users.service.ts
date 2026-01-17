@@ -343,13 +343,8 @@ export class UsersService {
       // We can use a relative URL if on same domain, or absolute.
       // The static assets are served at /uploads/
       // Let's assume absolute for safety if frontend is on different port
-      const port = process.env.PORT || 3002;
-      // We can just construct a path that the frontend can use if it proxies, 
-      // but typically full URL is better for DB storage.
-      // However, we don't know the public hostname easily.
-      // Let's use a protocol-relative or just /api if we have reverse proxy? No.
-      // Let's hardcode localhost for dev fallback.
-      const publicUrl = `http://localhost:${port}/uploads/users/${filename}`;
+      // Use relative path so frontend can prepend variable API_URL
+      const publicUrl = `/uploads/users/${filename}`;
 
       const updated = await this.prisma.user.update({
         where: { id: userId },
@@ -390,6 +385,16 @@ export class UsersService {
       select: { id: true, photoUrl: true },
     });
     return { photoUrl: updated.photoUrl };
+  }
+
+  async removeProfilePhoto(userId: number) {
+    // Ideally we would delete the file from storage/filesystem too, but setting to null is sufficient for now.
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { photoUrl: null },
+      select: { id: true, photoUrl: true },
+    });
+    return { photoUrl: null };
   }
 
   async adminSearchUsers(q: string, take = 20) {

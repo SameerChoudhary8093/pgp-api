@@ -341,8 +341,7 @@ let UsersService = UsersService_1 = class UsersService {
             const filename = `${userId}-${Date.now()}.${ext}`;
             const filePath = path.join(uploadDir, filename);
             fs.writeFileSync(filePath, file.buffer);
-            const port = process.env.PORT || 3002;
-            const publicUrl = `http://localhost:${port}/uploads/users/${filename}`;
+            const publicUrl = `/uploads/users/${filename}`;
             const updated = await this.prisma.user.update({
                 where: { id: userId },
                 data: { photoUrl: publicUrl },
@@ -378,6 +377,14 @@ let UsersService = UsersService_1 = class UsersService {
             select: { id: true, photoUrl: true },
         });
         return { photoUrl: updated.photoUrl };
+    }
+    async removeProfilePhoto(userId) {
+        const updated = await this.prisma.user.update({
+            where: { id: userId },
+            data: { photoUrl: null },
+            select: { id: true, photoUrl: true },
+        });
+        return { photoUrl: null };
     }
     async adminSearchUsers(q, take = 20) {
         const where = q
