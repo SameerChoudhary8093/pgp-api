@@ -6,20 +6,20 @@ export declare class AdminUsersController {
         actorUserId: number;
         reason: string;
     }): Promise<{
+        id: number;
         name: string;
         phone: string;
         role: import(".prisma/client").$Enums.Role;
         memberId: string | null;
-        id: number;
     }>;
     promoteToSsp(id: number, body: {
         actorUserId: number;
         reason: string;
     }): Promise<{
+        id: number;
         name: string;
         phone: string;
         role: import(".prisma/client").$Enums.Role;
         memberId: string | null;
-        id: number;
     }>;
 }
