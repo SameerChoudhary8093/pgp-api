@@ -72,9 +72,9 @@ async function bootstrap() {
     if (!cachedApp) {
         const app = await core_1.NestFactory.create(app_module_1.AppModule);
         app.enableCors({
-            origin: true,
+            origin: '*',
             methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-            credentials: true,
+            credentials: false,
         });
         app.useGlobalPipes(new common_1.ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
         const httpAdapter = app.get(core_1.HttpAdapterHost);
