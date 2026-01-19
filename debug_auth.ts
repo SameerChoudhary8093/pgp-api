@@ -14,22 +14,22 @@ async function main() {
     console.log('--- Debug Auth Script ---');
     const users = await prisma.user.findMany({
         take: 10,
-        select: { id: true, name: true, phone: true, passwordHash: true }
+        select: { id: true, name: true, phone: true, password: true }
     });
 
     console.log(`Found ${users.length} users.`);
 
     for (const user of users) {
         console.log(`User ID: ${user.id}, Name: ${user.name}, Phone: ${user.phone}`);
-        if (!user.passwordHash) {
+        if (!user.password) {
             console.log('  -> No password hash set.');
         } else {
-            console.log(`  -> Hash starts with: ${user.passwordHash.substring(0, 10)}...`);
+            console.log(`  -> Hash starts with: ${user.password.substring(0, 10)}...`);
             // Test common passwords
             const common = ['password', '123456', '12345678', 'admin', 'secret'];
             let found = false;
             for (const pass of common) {
-                if (await bcrypt.compare(pass, user.passwordHash)) {
+                if (await bcrypt.compare(pass, user.password)) {
                     console.log(`  -> MATCH FOUND! Password is: '${pass}'`);
                     found = true;
                     break;

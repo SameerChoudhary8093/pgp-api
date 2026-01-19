@@ -32,6 +32,9 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
 const dotenv = __importStar(require("dotenv"));
@@ -51,28 +54,19 @@ if (result.error) {
 else {
     console.log('.env loaded successfully from ' + envPath + '. DATABASE_URL is ' + (process.env.DATABASE_URL ? 'set' : 'MISSING'));
 }
-if (!process.env.DATABASE_URL) {
-    console.warn('Applying Hardcoded Fallback for DATABASE_URL');
-    process.env.DATABASE_URL = 'postgresql://postgres:pgp%40123jaipur@db.jgtseacyfwgbpltvlxno.supabase.co:6543/postgres?pgbouncer=true';
-}
-if (!process.env.SUPABASE_JWKS_URL) {
-    console.warn('Applying Hardcoded Fallback for SUPABASE_JWKS_URL');
-    process.env.SUPABASE_JWKS_URL = 'https://jgtseacyfwgbpltvlxno.supabase.co/auth/v1/jwks';
-}
-if (!process.env.AUTH_DEV_MODE) {
-    process.env.AUTH_DEV_MODE = 'true';
-}
 const core_1 = require("@nestjs/core");
 const app_module_1 = require("./app.module");
 const common_1 = require("@nestjs/common");
 const path_1 = require("path");
+const helmet_1 = __importDefault(require("helmet"));
 const all_exceptions_filter_1 = require("./all-exceptions.filter");
 let cachedApp;
 async function bootstrap() {
     if (!cachedApp) {
         const app = await core_1.NestFactory.create(app_module_1.AppModule);
+        app.use((0, helmet_1.default)());
         app.enableCors({
-            origin: true,
+            origin: process.env.CORS_ORIGIN || '*',
             methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
             credentials: true,
         });
@@ -87,9 +81,9 @@ async function bootstrap() {
     }
     return cachedApp;
 }
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+if (!process.env.VERCEL) {
     bootstrap().then(async (app) => {
-        const port = process.env.PORT ? Number(process.env.PORT) : 3002;
+        const port = process.env.PORT ? Number(process.env.PORT) : 3000;
         await app.listen(port);
         console.log(`Server listening on port ${port}`);
     });

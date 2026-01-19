@@ -38,6 +38,11 @@ let ElectionsController = class ElectionsController {
     detail(id) {
         return this.elections.detail(id);
     }
+    paginatedCandidates(id, page, pageSize) {
+        const pageNum = page ? parseInt(page, 10) || 1 : 1;
+        const sizeNum = pageSize ? parseInt(pageSize, 10) || 12 : 12;
+        return this.elections.paginatedCandidates(id, pageNum, sizeNum);
+    }
     vote(id, dto, req) {
         const voterUserId = req.user?.id;
         return this.elections.vote(id, voterUserId, dto);
@@ -80,6 +85,16 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], ElectionsController.prototype, "detail", null);
+__decorate([
+    (0, common_1.Get)('elections/:id/candidates'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('pageSize')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String, String]),
+    __metadata("design:returntype", void 0)
+], ElectionsController.prototype, "paginatedCandidates", null);
 __decorate([
     (0, common_1.Post)('elections/:id/vote'),
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard),

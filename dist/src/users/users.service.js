@@ -125,11 +125,10 @@ let UsersService = UsersService_1 = class UsersService {
                 name: dto.name,
                 phone: normalizedPhone,
                 address: dto.address,
-                wardId: dto.wardId ?? undefined,
                 localUnitId: localUnitId ?? undefined,
                 referralCode,
                 referredByUserId: referredByUserId ?? undefined,
-                passwordHash,
+                password: passwordHash,
                 authUserId: dto.authUserId ?? undefined,
                 memberId,
             },
@@ -160,15 +159,15 @@ let UsersService = UsersService_1 = class UsersService {
             this.logger.warn(`Login failed: User not found for phone '${phone}' (search queries: ${searchPhone})`);
             throw new common_1.BadRequestException('Invalid credentials - User not found');
         }
-        if (user.passwordHash) {
-            const match = await bcryptjs_1.default.compare(plain, user.passwordHash);
+        if (user.password) {
+            const match = await bcryptjs_1.default.compare(plain, user.password);
             if (!match) {
                 this.logger.warn(`Login failed: Password mismatch for user ${user.id} (${user.phone})`);
                 throw new common_1.BadRequestException('Invalid credentials - Password mismatch');
             }
         }
         else {
-            this.logger.warn(`Login failed: User ${user.id} has no password hash`);
+            this.logger.warn(`Login failed: User ${user.id} has no password set`);
             throw new common_1.BadRequestException('Invalid credentials - No password set for this user');
         }
         return { id: user.id, name: user.name };
@@ -227,7 +226,6 @@ let UsersService = UsersService_1 = class UsersService {
                     referralCode: true,
                     memberId: true,
                     photoUrl: true,
-                    wardId: true,
                     localUnitId: true,
                 },
             });
@@ -238,18 +236,6 @@ let UsersService = UsersService_1 = class UsersService {
         }
         if (!baseUser)
             throw new common_1.BadRequestException('User not found');
-        let ward = null;
-        if (baseUser.wardId) {
-            try {
-                ward = await this.prisma.ward.findUnique({
-                    where: { id: baseUser.wardId },
-                    select: { id: true, wardNumber: true, gp: { select: { id: true, name: true } } },
-                });
-            }
-            catch {
-                ward = null;
-            }
-        }
         let localUnit = null;
         if (baseUser.localUnitId) {
             try {
@@ -281,7 +267,6 @@ let UsersService = UsersService_1 = class UsersService {
             referralCode: baseUser.referralCode,
             memberId: baseUser.memberId,
             photoUrl: baseUser.photoUrl,
-            ward,
             localUnit,
         };
         const recruitsCount = await this.prisma.user.count({ where: { referredByUserId: userId } });

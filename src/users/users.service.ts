@@ -86,11 +86,10 @@ export class UsersService {
         name: dto.name,
         phone: normalizedPhone,
         address: dto.address,
-        wardId: dto.wardId ?? undefined,
         localUnitId: localUnitId ?? undefined,
         referralCode,
         referredByUserId: referredByUserId ?? undefined,
-        passwordHash,
+        password: passwordHash,
         authUserId: dto.authUserId ?? undefined,
         memberId,
       },
@@ -129,15 +128,15 @@ export class UsersService {
     }
 
     // Check password
-    if (user.passwordHash) {
-      const match = await bcrypt.compare(plain, user.passwordHash);
+    if (user.password) {
+      const match = await bcrypt.compare(plain, user.password);
       if (!match) {
         this.logger.warn(`Login failed: Password mismatch for user ${user.id} (${user.phone})`);
         throw new BadRequestException('Invalid credentials - Password mismatch');
       }
     } else {
-      this.logger.warn(`Login failed: User ${user.id} has no password hash`);
-      // If no password hash (legacy user?), fail
+      this.logger.warn(`Login failed: User ${user.id} has no password set`);
+      // If no password (legacy user?), fail
       throw new BadRequestException('Invalid credentials - No password set for this user');
     }
 
@@ -210,7 +209,6 @@ export class UsersService {
           referralCode: true,
           memberId: true,
           photoUrl: true,
-          wardId: true,
           localUnitId: true,
         },
       });
@@ -220,18 +218,6 @@ export class UsersService {
     }
 
     if (!baseUser) throw new BadRequestException('User not found');
-
-    let ward: any = null;
-    if (baseUser.wardId) {
-      try {
-        ward = await this.prisma.ward.findUnique({
-          where: { id: baseUser.wardId },
-          select: { id: true, wardNumber: true, gp: { select: { id: true, name: true } } },
-        });
-      } catch {
-        ward = null;
-      }
-    }
 
     let localUnit: any = null;
     if (baseUser.localUnitId) {
@@ -264,7 +250,6 @@ export class UsersService {
       referralCode: baseUser.referralCode,
       memberId: baseUser.memberId,
       photoUrl: baseUser.photoUrl,
-      ward,
       localUnit,
     };
 

@@ -27,7 +27,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
             timestamp: new Date().toISOString(),
             path: httpAdapter.getRequestUrl(ctx.getRequest()),
             message: (exception as any).message || 'Internal Server Error',
-            stack: (exception as any).stack, // Log stack to response for debugging
         };
 
         console.error('EXCEPTION INTERCEPTED:', exception);

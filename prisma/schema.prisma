@@ -2,10 +2,13 @@ generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x", "windows"]
 }
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
 }
+
+// --- GEOGRAPHY (MODERN HIERARCHY) ---
 
 model Loksabha {
   id           Int           @id @default(autoincrement())
@@ -17,11 +20,11 @@ model Vidhansabha {
   id         Int         @id @default(autoincrement())
   name       String
   loksabhaId Int
-  elections  Election[]
-  localUnits LocalUnit[]
   loksabha   Loksabha    @relation(fields: [loksabhaId], references: [id])
+  localUnits LocalUnit[]
+  elections  Election[]
 
-  @@unique([loksabhaId, name], name: "loksabhaId_name")
+  @@unique([loksabhaId, name])
   @@index([loksabhaId])
 }
 
@@ -30,90 +33,83 @@ model LocalUnit {
   vidhansabhaId Int
   name          String
   type          LocalUnitType
-  committees    Committee[]
   vidhansabha   Vidhansabha   @relation(fields: [vidhansabhaId], references: [id])
+  
   users         User[]
+  committees    Committee[]
 
-  @@unique([vidhansabhaId, name, type], name: "vidhansabhaId_name_type")
+  // Ensures you can't have "Ward 1" twice in the same Vidhansabha
+  @@unique([vidhansabhaId, name, type])
   @@index([vidhansabhaId, type])
 }
 
-model District {
-  id   Int             @id @default(autoincrement())
-  name String          @unique
-  gps  GramPanchayat[]
-}
+// --- REMOVED LEGACY TABLES (District, GramPanchayat, Ward) ---
 
-model GramPanchayat {
-  id         Int      @id @default(autoincrement())
-  name       String
-  districtId Int
-  district   District @relation(fields: [districtId], references: [id])
-  wards      Ward[]
-
-  @@unique([districtId, name])
-  @@index([districtId])
-}
-
-model Ward {
-  id         Int           @id @default(autoincrement())
-  wardNumber Int
-  gpId       Int
-  gp         GramPanchayat @relation(fields: [gpId], references: [id])
-
-  @@unique([gpId, wardNumber])
-}
+// --- USERS & AUTH ---
 
 model User {
   id                   Int                @id @default(autoincrement())
   name                 String
   phone                String             @unique
-  passwordHash         String
-  address              String
-  wardId               Int?
-  role                 Role               @default(CWC)
-  referralCode         String             @unique
+  password             String             // Renamed from passwordHash to match seed script
+  address              String?            // Made optional for flexibility
+  
+  // Role Management
+  role                 Role               @default(Member) // Default is now 'Member'
+  
+  // IDs & Links
+  authUserId           String?            @unique // Supabase UUID
+  memberId             String?            @unique // PGP-123456
+  photoUrl             String?
+  
+  // Location Link (Strictly LocalUnit now)
+  localUnitId          Int?
+  localUnit            LocalUnit?         @relation(fields: [localUnitId], references: [id])
+  
+  // Referral System
+  referralCode         String?            @unique // Made optional, generated on signup
   referredByUserId     Int?
+  referredBy           User?              @relation("UserReferrals", fields: [referredByUserId], references: [id])
+  recruits             User[]             @relation("UserReferrals")
+  
   isActive             Boolean            @default(true)
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
-  authUserId           String?            @unique
-  memberId             String?            @unique
-  photoUrl             String?
-  localUnitId          Int?
+
+  // Relations
   auditLogs            AuditLog[]         @relation("AuditActor")
   ballotSubmissions    BallotSubmission[]
   candidates           Candidate[]
   committeeMemberships CommitteeMember[]
-  localUnit            LocalUnit?         @relation(fields: [localUnitId], references: [id])
-  referredBy           User?              @relation("UserReferrals", fields: [referredByUserId], references: [id])
-  recruits             User[]             @relation("UserReferrals")
   receivedVotes        Vote[]             @relation("CandidateVotes")
   votes                Vote[]             @relation("UserVotes")
 
   @@index([referredByUserId])
   @@index([role])
-  @@index([wardId])
   @@index([localUnitId])
 }
+
+// --- ELECTIONS ---
 
 model Election {
   id                Int                @id @default(autoincrement())
   councilLevel      CouncilLevel
   position          String             @default("President")
   status            ElectionStatus     @default(Active)
+  
+  // Geo-fencing elections
+  vidhansabhaId     Int?
+  vidhansabha       Vidhansabha?       @relation(fields: [vidhansabhaId], references: [id])
+  
   openedAt          DateTime?          @default(now())
   closedAt          DateTime?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
-  districtId        Int?
-  vidhansabhaId     Int?
+
   ballotSubmissions BallotSubmission[]
   candidates        Candidate[]
-  vidhansabha       Vidhansabha?       @relation(fields: [vidhansabhaId], references: [id])
   votes             Vote[]
 
-  @@index([districtId])
   @@index([vidhansabhaId])
 }
 
@@ -133,11 +129,12 @@ model Vote {
   voterUserId     Int
   candidateUserId Int
   createdAt       DateTime @default(now())
-  candidate       User     @relation("CandidateVotes", fields: [candidateUserId], references: [id])
+  
   election        Election @relation(fields: [electionId], references: [id])
   voter           User     @relation("UserVotes", fields: [voterUserId], references: [id])
+  candidate       User     @relation("CandidateVotes", fields: [candidateUserId], references: [id])
 
-  @@unique([electionId, voterUserId, candidateUserId])
+  @@unique([electionId, voterUserId, candidateUserId]) // Prevents double voting for same person
 }
 
 model BallotSubmission {
@@ -145,25 +142,14 @@ model BallotSubmission {
   electionId  Int
   voterUserId Int
   createdAt   DateTime @default(now())
+  
   election    Election @relation(fields: [electionId], references: [id])
   voter       User     @relation(fields: [voterUserId], references: [id])
 
-  @@unique([electionId, voterUserId])
+  @@unique([electionId, voterUserId]) // Ensures 1 ballot per election per user
 }
 
-model AuditLog {
-  id          Int      @id @default(autoincrement())
-  actorUserId Int?
-  action      String
-  entityType  String
-  entityId    String
-  reason      String?
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id])
-
-  @@index([actorUserId])
-}
+// --- COMMITTEES ---
 
 model Committee {
   id          Int               @id @default(autoincrement())
@@ -183,6 +169,7 @@ model CommitteeMember {
   role        Role?
   isPresident Boolean   @default(false)
   createdAt   DateTime  @default(now())
+  
   committee   Committee @relation(fields: [committeeId], references: [id])
   user        User      @relation(fields: [userId], references: [id])
 
@@ -190,24 +177,42 @@ model CommitteeMember {
   @@index([committeeId])
 }
 
+// --- AUDIT ---
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  actorUserId Int?
+  action      String
+  entityType  String
+  entityId    String
+  reason      String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  
+  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id])
+
+  @@index([actorUserId])
+}
+
+// --- ENUMS ---
+
 enum Role {
   Admin
-  Founder
-  SSP
-  PPC
-  APC
-  CWC
-  Worker
-  CWCPresident
+  Member          // The default base role
   CWCMember
-  ExtendedMember
+  CWCPresident
+  APC             // Assembly Level Council
+  PPC             // Parliament Level
+  SSP             // State Level
+  ALCPresident    // Assembly President
+  SLCPresident    // State President
 }
 
 enum CouncilLevel {
   CWC
+  APC
   ALC
   SLC
-  APC
 }
 
 enum ElectionStatus {

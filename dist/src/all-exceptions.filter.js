@@ -28,7 +28,6 @@ let AllExceptionsFilter = class AllExceptionsFilter {
             timestamp: new Date().toISOString(),
             path: httpAdapter.getRequestUrl(ctx.getRequest()),
             message: exception.message || 'Internal Server Error',
-            stack: exception.stack,
         };
         console.error('EXCEPTION INTERCEPTED:', exception);
         httpAdapter.reply(ctx.getResponse(), responseBody, httpStatus);

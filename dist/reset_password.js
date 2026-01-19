@@ -65,7 +65,7 @@ async function main() {
     const hash = await bcrypt.hash(newPass, 10);
     await prisma.user.update({
         where: { id: user.id },
-        data: { passwordHash: hash }
+        data: { password: hash }
     });
     console.log('Password reset successfully to:', newPass);
 }

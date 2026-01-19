@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GeoController = void 0;
 const common_1 = require("@nestjs/common");
+const cache_manager_1 = require("@nestjs/cache-manager");
 const geo_service_1 = require("./geo.service");
 let GeoController = class GeoController {
     geo;
@@ -63,6 +64,7 @@ __decorate([
 ], GeoController.prototype, "qa", null);
 exports.GeoController = GeoController = __decorate([
     (0, common_1.Controller)('geo'),
+    (0, common_1.UseInterceptors)(cache_manager_1.CacheInterceptor),
     __metadata("design:paramtypes", [geo_service_1.GeoService])
 ], GeoController);
 //# sourceMappingURL=geo.controller.js.map

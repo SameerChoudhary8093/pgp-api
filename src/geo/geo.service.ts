@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
@@ -18,8 +18,7 @@ export class GeoService {
     if (type) {
       const t = type.toLowerCase();
       if (t === 'ward') where.type = 'Ward';
-      else if (t === 'gram panchayat') where.type = 'GramPanchayat';
-      else throw new BadRequestException('Invalid type. Use "Ward" or "Gram Panchayat"');
+      else if (t === 'grampanchayat' || t === 'gram panchayat') where.type = 'GramPanchayat';
     }
     return this.prisma.localUnit.findMany({ where, orderBy: [{ type: 'asc' }, { name: 'asc' }], select: { id: true, name: true, type: true } });
   }

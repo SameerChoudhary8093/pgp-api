@@ -1,7 +1,9 @@
-import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query, UseInterceptors } from '@nestjs/common';
+import { CacheInterceptor } from '@nestjs/cache-manager';
 import { GeoService } from './geo.service';
 
 @Controller('geo')
+@UseInterceptors(CacheInterceptor)
 export class GeoController {
   constructor(private readonly geo: GeoService) {}
 

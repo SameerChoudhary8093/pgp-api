@@ -22,24 +22,12 @@ if (result.error) {
   console.log('.env loaded successfully from ' + envPath + '. DATABASE_URL is ' + (process.env.DATABASE_URL ? 'set' : 'MISSING'));
 }
 
-// Fallback hardcoded values
-if (!process.env.DATABASE_URL) {
-  console.warn('Applying Hardcoded Fallback for DATABASE_URL');
-  process.env.DATABASE_URL = 'postgresql://postgres:pgp%40123jaipur@db.jgtseacyfwgbpltvlxno.supabase.co:6543/postgres?pgbouncer=true';
-}
-if (!process.env.SUPABASE_JWKS_URL) {
-  console.warn('Applying Hardcoded Fallback for SUPABASE_JWKS_URL');
-  process.env.SUPABASE_JWKS_URL = 'https://jgtseacyfwgbpltvlxno.supabase.co/auth/v1/jwks';
-}
-if (!process.env.AUTH_DEV_MODE) {
-  process.env.AUTH_DEV_MODE = 'true';
-}
-
 import { NestFactory, HttpAdapterHost } from '@nestjs/core'; // Combined import
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import helmet from 'helmet';
 import { AllExceptionsFilter } from './all-exceptions.filter'; // moved here
 
 let cachedApp: any;
@@ -47,8 +35,12 @@ let cachedApp: any;
 async function bootstrap() {
   if (!cachedApp) {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
+    // Security: Helmet HTTP headers
+    app.use(helmet());
+
+    // CORS configuration
     app.enableCors({
-      origin: true,
+      origin: process.env.CORS_ORIGIN || '*',
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
       credentials: true,
     });
@@ -72,10 +64,10 @@ async function bootstrap() {
   return cachedApp;
 }
 
-// For local development
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+// For non-Vercel environments (local, Docker, Railway, etc.)
+if (!process.env.VERCEL) {
   bootstrap().then(async (app) => {
-    const port = process.env.PORT ? Number(process.env.PORT) : 3002;
+    const port = process.env.PORT ? Number(process.env.PORT) : 3000;
     await app.listen(port);
     console.log(`Server listening on port ${port}`);
   });

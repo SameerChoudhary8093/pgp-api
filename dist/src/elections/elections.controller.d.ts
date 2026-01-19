@@ -12,7 +12,6 @@ export declare class ElectionsController {
         createdAt: Date;
         updatedAt: Date;
         vidhansabhaId: number | null;
-        districtId: number | null;
         status: import(".prisma/client").$Enums.ElectionStatus;
         councilLevel: import(".prisma/client").$Enums.CouncilLevel;
         position: string;
@@ -28,7 +27,6 @@ export declare class ElectionsController {
             createdAt: Date;
             updatedAt: Date;
             vidhansabhaId: number | null;
-            districtId: number | null;
             status: import(".prisma/client").$Enums.ElectionStatus;
             councilLevel: import(".prisma/client").$Enums.CouncilLevel;
             position: string;
@@ -53,13 +51,37 @@ export declare class ElectionsController {
             createdAt: Date;
             updatedAt: Date;
             vidhansabhaId: number | null;
-            districtId: number | null;
             status: import(".prisma/client").$Enums.ElectionStatus;
             councilLevel: import(".prisma/client").$Enums.CouncilLevel;
             position: string;
             openedAt: Date | null;
             closedAt: Date | null;
         };
+        candidates: {
+            id: number;
+            user: {
+                id: number;
+                name: string;
+                phone: string;
+            };
+            votes: number;
+        }[];
+    }>;
+    paginatedCandidates(id: number, page?: string, pageSize?: string): Promise<{
+        election: {
+            id: number;
+            createdAt: Date;
+            updatedAt: Date;
+            vidhansabhaId: number | null;
+            status: import(".prisma/client").$Enums.ElectionStatus;
+            councilLevel: import(".prisma/client").$Enums.CouncilLevel;
+            position: string;
+            openedAt: Date | null;
+            closedAt: Date | null;
+        };
+        page: number;
+        pageSize: number;
+        total: number;
         candidates: {
             id: number;
             user: {
@@ -78,7 +100,6 @@ export declare class ElectionsController {
         createdAt: Date;
         updatedAt: Date;
         vidhansabhaId: number | null;
-        districtId: number | null;
         status: import(".prisma/client").$Enums.ElectionStatus;
         councilLevel: import(".prisma/client").$Enums.CouncilLevel;
         position: string;
@@ -95,7 +116,6 @@ export declare class ElectionsController {
         createdAt: Date;
         updatedAt: Date;
         vidhansabhaId: number | null;
-        districtId: number | null;
         status: import(".prisma/client").$Enums.ElectionStatus;
         councilLevel: import(".prisma/client").$Enums.CouncilLevel;
         position: string;
@@ -107,7 +127,6 @@ export declare class ElectionsController {
         createdAt: Date;
         updatedAt: Date;
         vidhansabhaId: number | null;
-        districtId: number | null;
         status: import(".prisma/client").$Enums.ElectionStatus;
         councilLevel: import(".prisma/client").$Enums.CouncilLevel;
         position: string;
@@ -120,7 +139,6 @@ export declare class ElectionsController {
             createdAt: Date;
             updatedAt: Date;
             vidhansabhaId: number | null;
-            districtId: number | null;
             status: import(".prisma/client").$Enums.ElectionStatus;
             councilLevel: import(".prisma/client").$Enums.CouncilLevel;
             position: string;

@@ -152,6 +152,45 @@ let ElectionsService = class ElectionsService {
         }));
         return { election, candidates: withCounts };
     }
+    async paginatedCandidates(electionId, page = 1, pageSize = 12) {
+        if (page < 1)
+            page = 1;
+        if (pageSize < 1 || pageSize > 100)
+            pageSize = 12;
+        const election = await this.prisma.election.findUnique({ where: { id: electionId } });
+        if (!election)
+            throw new common_1.NotFoundException('Election not found');
+        const skip = (page - 1) * pageSize;
+        const [total, candidates] = await Promise.all([
+            this.prisma.candidate.count({ where: { electionId } }),
+            this.prisma.candidate.findMany({
+                where: { electionId },
+                include: { user: { select: { id: true, name: true, phone: true } } },
+                orderBy: { id: 'asc' },
+                skip,
+                take: pageSize,
+            }),
+        ]);
+        const grouped = await this.prisma.vote.groupBy({
+            by: ['candidateUserId'],
+            where: { electionId },
+            _count: { _all: true },
+        });
+        const voteCountMap = new Map();
+        grouped.forEach((g) => voteCountMap.set(g.candidateUserId, g._count._all));
+        const items = candidates.map((c) => ({
+            id: c.id,
+            user: c.user,
+            votes: voteCountMap.get(c.userId) || 0,
+        }));
+        return {
+            election,
+            page,
+            pageSize,
+            total,
+            candidates: items,
+        };
+    }
     async vote(electionId, voterUserId, dto) {
         const election = await this.prisma.election.findUnique({ where: { id: electionId } });
         if (!election)

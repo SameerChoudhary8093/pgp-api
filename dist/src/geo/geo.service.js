@@ -29,10 +29,8 @@ let GeoService = class GeoService {
             const t = type.toLowerCase();
             if (t === 'ward')
                 where.type = 'Ward';
-            else if (t === 'gram panchayat')
+            else if (t === 'grampanchayat' || t === 'gram panchayat')
                 where.type = 'GramPanchayat';
-            else
-                throw new common_1.BadRequestException('Invalid type. Use "Ward" or "Gram Panchayat"');
         }
         return this.prisma.localUnit.findMany({ where, orderBy: [{ type: 'asc' }, { name: 'asc' }], select: { id: true, name: true, type: true } });
     }

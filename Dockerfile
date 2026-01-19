@@ -1,20 +1,16 @@
-# Use Node 18 Debian Bookworm (Slim)
-FROM node:18-bookworm-slim
+## 1. Build Stage
+FROM node:20-alpine AS builder
 
-# Install OpenSSL 3.0 and CA certificates
-RUN apt-get update -y && apt-get install -y openssl ca-certificates
-
-# Set the working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files and Prisma schema
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm install
+# Install dependencies (clean, reproducible install)
+RUN npm ci
 
-# Copy the rest of the application code
+# Copy source code
 COPY . .
 
 # Generate Prisma Client
@@ -23,8 +19,20 @@ RUN npx prisma generate
 # Build the NestJS app
 RUN npm run build
 
-# Expose the port
-EXPOSE 3002
+## 2. Production Stage
+FROM node:20-alpine
 
-# Start the application
+WORKDIR /app
+
+# Copy only what we need for runtime
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+
+# Railway provides PORT; default to 3000
+ENV PORT=3000
+EXPOSE 3000
+
+# Start the NestJS app
 CMD ["npm", "run", "start:prod"]

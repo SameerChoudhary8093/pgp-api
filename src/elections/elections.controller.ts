@@ -32,6 +32,18 @@ export class ElectionsController {
     return this.elections.detail(id);
   }
 
+  @Get('elections/:id/candidates')
+  @UseGuards(AuthGuard)
+  paginatedCandidates(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    const pageNum = page ? parseInt(page, 10) || 1 : 1;
+    const sizeNum = pageSize ? parseInt(pageSize, 10) || 12 : 12;
+    return this.elections.paginatedCandidates(id, pageNum, sizeNum);
+  }
+
   @Post('elections/:id/vote')
   @UseGuards(AuthGuard)
   vote(@Param('id', ParseIntPipe) id: number, @Body() dto: VoteDto, @Req() req: any) {

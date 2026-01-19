@@ -11,9 +11,9 @@ export declare class UsersService {
         id: number;
         name: string;
         phone: string;
-        referralCode: string;
-        referredByUserId: number | null;
         memberId: string | null;
+        referralCode: string | null;
+        referredByUserId: number | null;
     }>;
     login(phone: string, plain: string): Promise<{
         id: number;
@@ -25,8 +25,8 @@ export declare class UsersService {
             id: number;
             name: string;
             phone: string;
-            createdAt: Date;
             photoUrl: string | null;
+            createdAt: Date;
         }[];
     }>;
     recruitmentProgress(userId: number): Promise<{
@@ -48,7 +48,6 @@ export declare class UsersService {
             referralCode: any;
             memberId: any;
             photoUrl: any;
-            ward: any;
             localUnit: any;
         };
         recruitsCount: number;

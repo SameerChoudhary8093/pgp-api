@@ -9,9 +9,9 @@ export declare class UsersController {
         id: number;
         name: string;
         phone: string;
-        referralCode: string;
-        referredByUserId: number | null;
         memberId: string | null;
+        referralCode: string | null;
+        referredByUserId: number | null;
     }>;
     login(dto: any): Promise<{
         id: number;
@@ -30,7 +30,6 @@ export declare class UsersController {
             referralCode: any;
             memberId: any;
             photoUrl: any;
-            ward: any;
             localUnit: any;
         };
         recruitsCount: number;
@@ -61,8 +60,8 @@ export declare class UsersController {
             id: number;
             name: string;
             phone: string;
-            createdAt: Date;
             photoUrl: string | null;
+            createdAt: Date;
         }[];
     }>;
     recruits(id: number, take?: string): Promise<{
@@ -71,8 +70,8 @@ export declare class UsersController {
             id: number;
             name: string;
             phone: string;
-            createdAt: Date;
             photoUrl: string | null;
+            createdAt: Date;
         }[];
     }>;
     summary(id: number): Promise<{
@@ -88,7 +87,6 @@ export declare class UsersController {
             referralCode: any;
             memberId: any;
             photoUrl: any;
-            ward: any;
             localUnit: any;
         };
         recruitsCount: number;
