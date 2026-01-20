@@ -1,6 +1,9 @@
 ## 1. Build Stage
 FROM node:20-alpine AS builder
 
+# Prisma's linux-musl engine on Alpine needs OpenSSL 1.1 compatibility libs
+RUN apk add --no-cache openssl1.1-compat
+
 WORKDIR /app
 
 # Copy package files and Prisma schema
@@ -21,6 +24,9 @@ RUN npm run build
 
 ## 2. Production Stage
 FROM node:20-alpine
+
+# Ensure OpenSSL 1.1 compatibility is available at runtime for Prisma
+RUN apk add --no-cache openssl1.1-compat
 
 WORKDIR /app
 
