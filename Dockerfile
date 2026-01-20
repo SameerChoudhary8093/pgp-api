@@ -1,8 +1,10 @@
 ## 1. Build Stage
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 
-# Prisma's linux-musl engine on Alpine needs OpenSSL 1.1 compatibility libs
-RUN apk add --no-cache openssl1.1-compat
+# Install OpenSSL and CA certificates (needed by Prisma and HTTPS clients)
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -23,10 +25,12 @@ RUN npx prisma generate
 RUN npm run build
 
 ## 2. Production Stage
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
-# Ensure OpenSSL 1.1 compatibility is available at runtime for Prisma
-RUN apk add --no-cache openssl1.1-compat
+# Install OpenSSL and CA certificates for runtime
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
