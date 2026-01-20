@@ -8,12 +8,12 @@ export declare class UsersService {
     private readonly logger;
     constructor(prisma: PrismaService, audit: AuditService);
     register(dto: RegisterDto): Promise<{
-        id: number;
         name: string;
         phone: string;
         referralCode: string;
-        referredByUserId: number | null;
         memberId: string | null;
+        id: number;
+        referredByUserId: number | null;
     }>;
     login(phone: string, plain: string): Promise<{
         id: number;
@@ -22,11 +22,11 @@ export declare class UsersService {
     recruits(userId: number, take?: number): Promise<{
         total: number;
         recruits: {
-            id: number;
             name: string;
             phone: string;
-            createdAt: Date;
             photoUrl: string | null;
+            createdAt: Date;
+            id: number;
         }[];
     }>;
     recruitmentProgress(userId: number): Promise<{
@@ -56,18 +56,18 @@ export declare class UsersService {
     }>;
     leaderboard(take?: number): Promise<{
         user: {
-            id: number;
             name: string;
             phone: string;
+            id: number;
         } | null;
         recruits: number;
     }[]>;
     updateProfile(userId: number, dto: UpdateProfileDto): Promise<{
-        id: number;
         name: string;
+        photoUrl: string | null;
         role: import(".prisma/client").$Enums.Role;
         memberId: string | null;
-        photoUrl: string | null;
+        id: number;
     }>;
     uploadProfilePhoto(userId: number, file: any): Promise<{
         photoUrl: string | null;
@@ -76,24 +76,24 @@ export declare class UsersService {
         photoUrl: null;
     }>;
     adminSearchUsers(q: string, take?: number): Promise<{
-        id: number;
         name: string;
         phone: string;
         role: import(".prisma/client").$Enums.Role;
         memberId: string | null;
+        id: number;
     }[]>;
     adminUpdateRole(userId: number, newRole: string, actorUserId: number, reason: string): Promise<{
-        id: number;
         name: string;
         phone: string;
         role: import(".prisma/client").$Enums.Role;
         memberId: string | null;
+        id: number;
     }>;
     adminPromoteToRole(userId: number, target: 'PPC' | 'SSP', actorUserId: number, reason: string): Promise<{
-        id: number;
         name: string;
         phone: string;
         role: import(".prisma/client").$Enums.Role;
         memberId: string | null;
+        id: number;
     }>;
 }

@@ -18,8 +18,8 @@ export declare class LocationsController {
     }[]>;
     listWards(gpId: number): import(".prisma/client").Prisma.PrismaPromise<{
         id: number;
-        gpId: number;
         wardNumber: number;
+        gpId: number;
     }[]>;
     listLoksabhas(): import(".prisma/client").Prisma.PrismaPromise<{
         id: number;

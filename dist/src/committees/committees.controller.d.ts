@@ -9,9 +9,9 @@ export declare class CommitteesController {
         actorUserId: number;
         reason?: string;
     }): Promise<{
-        id: number;
         name: string;
         localUnitId: number;
+        id: number;
         type: import(".prisma/client").$Enums.CommitteeType;
     }>;
     addMember(id: number, body: {
@@ -33,10 +33,10 @@ export declare class CommitteesController {
         };
         members: ({
             user: {
-                id: number;
                 name: string;
                 phone: string;
                 role: import(".prisma/client").$Enums.Role;
+                id: number;
             };
         } & {
             role: import(".prisma/client").$Enums.Role | null;

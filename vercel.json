@@ -3,11 +3,11 @@
     "rewrites": [
         {
             "source": "/(.*)",
-            "destination": "/api/index.js"
+            "destination": "/src/main.ts"
         }
     ],
     "functions": {
-        "api/index.js": {
+        "src/main.ts": {
             "includeFiles": "prisma/schema.prisma"
         }
     }

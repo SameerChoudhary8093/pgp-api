@@ -10,14 +10,14 @@ export declare class ElectionsService {
     private audit;
     constructor(prisma: PrismaService, audit: AuditService);
     createElection(dto: CreateElectionDto): Promise<{
-        id: number;
         createdAt: Date;
         updatedAt: Date;
+        id: number;
         vidhansabhaId: number | null;
-        districtId: number | null;
         status: import(".prisma/client").$Enums.ElectionStatus;
         councilLevel: import(".prisma/client").$Enums.CouncilLevel;
         position: string;
+        districtId: number | null;
         openedAt: Date | null;
         closedAt: Date | null;
     }>;
@@ -27,48 +27,48 @@ export declare class ElectionsService {
         electionId: number;
     }>;
     closeElection(electionId: number, dto: CloseElectionDto): Promise<{
-        id: number;
         createdAt: Date;
         updatedAt: Date;
+        id: number;
         vidhansabhaId: number | null;
-        districtId: number | null;
         status: import(".prisma/client").$Enums.ElectionStatus;
         councilLevel: import(".prisma/client").$Enums.CouncilLevel;
         position: string;
+        districtId: number | null;
         openedAt: Date | null;
         closedAt: Date | null;
     }>;
     list(): Promise<{
-        id: number;
         createdAt: Date;
         updatedAt: Date;
+        id: number;
         vidhansabhaId: number | null;
-        districtId: number | null;
         status: import(".prisma/client").$Enums.ElectionStatus;
         councilLevel: import(".prisma/client").$Enums.CouncilLevel;
         position: string;
+        districtId: number | null;
         openedAt: Date | null;
         closedAt: Date | null;
     }[]>;
     detail(electionId: number): Promise<{
         election: {
-            id: number;
             createdAt: Date;
             updatedAt: Date;
+            id: number;
             vidhansabhaId: number | null;
-            districtId: number | null;
             status: import(".prisma/client").$Enums.ElectionStatus;
             councilLevel: import(".prisma/client").$Enums.CouncilLevel;
             position: string;
+            districtId: number | null;
             openedAt: Date | null;
             closedAt: Date | null;
         };
         candidates: {
             id: number;
             user: {
-                id: number;
                 name: string;
                 phone: string;
+                id: number;
             };
             votes: number;
         }[];
@@ -81,22 +81,22 @@ export declare class ElectionsService {
         candidates: never[];
     } | {
         election: {
-            id: number;
             createdAt: Date;
             updatedAt: Date;
+            id: number;
             vidhansabhaId: number | null;
-            districtId: number | null;
             status: import(".prisma/client").$Enums.ElectionStatus;
             councilLevel: import(".prisma/client").$Enums.CouncilLevel;
             position: string;
+            districtId: number | null;
             openedAt: Date | null;
             closedAt: Date | null;
         };
         candidates: ({
             user: {
-                id: number;
                 name: string;
                 phone: string;
+                id: number;
             };
         } & {
             id: number;
@@ -105,36 +105,36 @@ export declare class ElectionsService {
         })[];
     }>;
     createApcElections(dto: CreateApcElectionsDto): Promise<{
-        id: number;
         createdAt: Date;
         updatedAt: Date;
+        id: number;
         vidhansabhaId: number | null;
-        districtId: number | null;
         status: import(".prisma/client").$Enums.ElectionStatus;
         councilLevel: import(".prisma/client").$Enums.CouncilLevel;
         position: string;
+        districtId: number | null;
         openedAt: Date | null;
         closedAt: Date | null;
     }>;
     results(electionId: number): Promise<{
         election: {
-            id: number;
             createdAt: Date;
             updatedAt: Date;
+            id: number;
             vidhansabhaId: number | null;
-            districtId: number | null;
             status: import(".prisma/client").$Enums.ElectionStatus;
             councilLevel: import(".prisma/client").$Enums.CouncilLevel;
             position: string;
+            districtId: number | null;
             openedAt: Date | null;
             closedAt: Date | null;
         };
         results: {
             candidateUserId: number;
             user: {
-                id: number;
                 name: string;
                 phone: string;
+                id: number;
             } | null;
             votes: number;
         }[];
