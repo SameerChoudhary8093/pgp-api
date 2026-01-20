@@ -48,9 +48,9 @@ async function bootstrap() {
   if (!cachedApp) {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
     app.enableCors({
-      origin: '*',
+      origin: true, // Allow any origin
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-      credentials: false,
+      credentials: true,
     });
 
     // Global Pipes
