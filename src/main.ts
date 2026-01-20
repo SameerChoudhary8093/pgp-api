@@ -16,11 +16,14 @@ if (result.error) {
   result = dotenv.config({ path: envPath });
 }
 
-if (result.error) {
-  console.log('CRITICAL: Error loading .env file from ' + envPath, result.error);
-} else {
-  console.log('.env loaded successfully from ' + envPath + '. DATABASE_URL is ' + (process.env.DATABASE_URL ? 'set' : 'MISSING'));
-}
+// Log Database Connection String (Safely)
+const dbUrl = process.env.DATABASE_URL || 'UNDEFINED';
+const safeDbUrl = dbUrl.replace(/:([^@]+)@/, ':****@');
+console.log(`[DEBUG] DATABASE_URL loaded: ${safeDbUrl}`);
+if (dbUrl.includes('6543')) console.log('[DEBUG] Using Port 6543 (Pooling)');
+if (dbUrl.includes('5432')) console.log('[DEBUG] Using Port 5432 (Direct)');
+if (dbUrl.includes('pgbouncer=true')) console.log('[DEBUG] pgBouncer mode detected');
+
 
 // Fallback hardcoded values
 if (!process.env.DATABASE_URL) {
