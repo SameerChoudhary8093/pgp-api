@@ -5,68 +5,45 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
-    const phone = '8107165371';
-    const password = 'rahul@pgp';
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const phone = '9999999999';
+    const password = 'password123';
+    const name = 'Test Admin User';
 
-    // Normalized phone format
-    const normalizedPhone = `+91${phone}`;
-
-    console.log(`Checking for user ${phone}...`);
-
-    const existing = await prisma.user.findFirst({
-        where: {
-            OR: [
-                { phone: phone },
-                { phone: normalizedPhone }
-            ]
-        }
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+        where: { phone: phone },
     });
 
-    if (existing) {
-        console.log(`User found (ID: ${existing.id}). Updating password...`);
-        await prisma.user.update({
-            where: { id: existing.id },
-            data: { passwordHash: hashedPassword }
-        });
-        console.log('Password updated successfully.');
-    } else {
-        console.log('User not found. Creating new user...');
-
-        // Create Location Chain
-        let localUnit = await prisma.localUnit.findFirst();
-
-        if (!localUnit) {
-            console.log('Creating dummy Local Unit...');
-            // Correct fields based on Schema: Loksabha only has 'name'
-            const loksabha = await prisma.loksabha.create({
-                data: { name: 'Dummy Loksabha' }
-            });
-            const vidhansabha = await prisma.vidhansabha.create({
-                data: { name: 'Dummy Vidhansabha', loksabhaId: loksabha.id }
-            });
-            localUnit = await prisma.localUnit.create({
-                data: { name: 'Dummy Ward', type: 'Ward', vidhansabhaId: vidhansabha.id }
-            });
-        }
-
-        const newUser = await prisma.user.create({
-            data: {
-                name: 'Rahul PGP',
-                phone: normalizedPhone,
-                passwordHash: hashedPassword,
-                memberId: 'PGP-TEST-001',
-                localUnitId: localUnit.id,
-                address: 'Test Address',
-                referralCode: 'TESTCODE'
-            }
-        });
-        console.log(`User created successfully! (ID: ${newUser.id})`);
+    if (existingUser) {
+        console.log(`User with phone ${phone} already exists.`);
+        return;
     }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hash = await bcrypt.hash(password, salt);
+
+    // Generate Referral Code
+    const referralCode = 'TESTADMIN' + Math.floor(1000 + Math.random() * 9000);
+
+    // Create User
+    const user = await prisma.user.create({
+        data: {
+            name: name,
+            phone: phone,
+            passwordHash: hash,
+            address: 'Jaipur, Rajasthan',
+            role: 'Admin', // Ensure this role exists in your Schema Enum
+            referralCode: referralCode,
+            isActive: true,
+        },
+    });
+
+    console.log(`Created user: ${user.name} (${user.phone}) - Password: ${password}`);
 }
 
 main()
-    .catch(e => {
+    .catch((e) => {
         console.error(e);
         process.exit(1);
     })

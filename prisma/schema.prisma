@@ -69,7 +69,7 @@ model User {
   id                   Int                @id @default(autoincrement())
   name                 String
   phone                String             @unique
-  passwordHash         String
+  passwordHash         String?
   address              String
   wardId               Int?
   role                 Role               @default(CWC)
@@ -202,6 +202,9 @@ enum Role {
   CWCPresident
   CWCMember
   ExtendedMember
+  Member
+  ALCPresident
+  SLCPresident
 }
 
 enum CouncilLevel {
