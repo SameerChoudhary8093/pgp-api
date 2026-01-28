@@ -6,4 +6,9 @@ export class UpdateProfileDto {
   @IsUrl()
   @MaxLength(500)
   photoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(6)
+  pin?: string;
 }

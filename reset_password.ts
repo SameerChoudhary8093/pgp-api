@@ -9,11 +9,11 @@ const prisma = new PrismaClient({
 async function main() {
     const args = process.argv.slice(2);
     if (args.length < 2) {
-        console.error('Usage: npx ts-node reset_password.ts <phone> <new_password>');
+        console.error('Usage: npx ts-node reset_password.ts <phone> <new_pin>');
         process.exit(1);
     }
     const phone = args[0];
-    const newPass = args[1];
+    const newPin = args[1];
 
     console.log(`Searching for user with phone: ${phone}`);
 
@@ -33,14 +33,14 @@ async function main() {
     }
 
     const user = users[0];
-    console.log(`Resetting password for User ID ${user.id} (${user.name}, ${user.phone})...`);
+    console.log(`Resetting PIN for User ID ${user.id} (${user.name}, ${user.phone})...`);
 
-    const hash = await bcrypt.hash(newPass, 10);
+    const hash = await bcrypt.hash(newPin, 10);
     await prisma.user.update({
         where: { id: user.id },
-        data: { password: hash }
+        data: { pin: hash }
     });
-    console.log('Password reset successfully to:', newPass);
+    console.log('PIN reset successfully to:', newPin);
 }
 
 main().catch(e => console.error(e)).finally(() => prisma.$disconnect());

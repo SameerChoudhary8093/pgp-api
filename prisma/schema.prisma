@@ -51,7 +51,7 @@ model User {
   id                   Int                @id @default(autoincrement())
   name                 String
   phone                String             @unique
-  password             String             // Renamed from passwordHash to match seed script
+  pin                  String?            // Hashed PIN (4-6 digits)
   address              String?            // Made optional for flexibility
   
   // Role Management
@@ -152,14 +152,19 @@ model BallotSubmission {
 // --- COMMITTEES ---
 
 model Committee {
-  id          Int               @id @default(autoincrement())
-  name        String
-  type        CommitteeType
-  localUnitId Int
-  localUnit   LocalUnit         @relation(fields: [localUnitId], references: [id])
-  members     CommitteeMember[]
+  id             Int               @id @default(autoincrement())
+  name           String
+  letter         String?
+  // Per‑unit sequence: 1, 2, 3... for CWC naming like "CWC Ward 13 1"
+  sequenceNumber Int?
+  type           CommitteeType
+  localUnitId    Int
+  localUnit      LocalUnit         @relation(fields: [localUnitId], references: [id])
+  members        CommitteeMember[]
+  createdAt      DateTime          @default(now())
 
   @@unique([name, localUnitId, type])
+  @@unique([localUnitId, sequenceNumber])
   @@index([localUnitId])
 }
 

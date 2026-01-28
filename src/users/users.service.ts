@@ -4,9 +4,11 @@ import { RegisterDto } from './dto/register.dto';
 import bcrypt from 'bcryptjs';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuditService } from '../audit/audit.service';
+import { PromotionService } from './promotion.service';
 import { Prisma } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { JwtService } from '@nestjs/jwt';
 
 function randomReferralCode(length = 8) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -18,7 +20,12 @@ function randomReferralCode(length = 8) {
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
-  constructor(private prisma: PrismaService, private audit: AuditService) { }
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+    private promotion: PromotionService,
+    private jwtService: JwtService,
+  ) { }
 
   async register(dto: RegisterDto) {
     // Normalize phone: keep only last 10 digits for a consistent internal format
@@ -66,7 +73,8 @@ export class UsersService {
     const finalClash = await this.prisma.user.findUnique({ where: { referralCode } });
     if (finalClash) throw new BadRequestException('Please retry: referral code generation conflict');
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = dto.password ? await bcrypt.hash(dto.password, 10) : undefined;
+    const pinHash = dto.pin ? await bcrypt.hash(dto.pin, 10) : undefined;
 
     // Generate unique memberId: PGP-######
     async function generateMemberId(): Promise<string> {
@@ -89,58 +97,74 @@ export class UsersService {
         localUnitId: localUnitId ?? undefined,
         referralCode,
         referredByUserId: referredByUserId ?? undefined,
-        password: passwordHash,
+        pin: pinHash,
         authUserId: dto.authUserId ?? undefined,
         memberId,
       },
       select: { id: true, name: true, phone: true, referralCode: true, referredByUserId: true, memberId: true },
     });
+    if (referredByUserId) {
+      this.promotion
+        .checkAndPromote(referredByUserId)
+        .catch((err) => this.logger.error('checkAndPromote failed', err));
+    }
 
     return user;
   }
 
   async login(phone: string, plain: string) {
-    if (!phone || !plain) throw new BadRequestException('Phone and password required');
+    // Password-based login is no longer supported; use Supabase or PIN login instead.
+    throw new BadRequestException('Password login is no longer supported. Please use PIN login.');
+  }
 
-    // Normalize phone: keep only the last 10 digits
+  async loginWithPin(phone: string, pin: string) {
+    if (!phone || !pin) throw new BadRequestException('Phone and PIN required');
+
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     if (cleanPhone.length < 10) throw new BadRequestException('Invalid phone number format');
 
     const searchPhone = cleanPhone.slice(-10);
     const standardFormat = `+91${searchPhone}`;
 
-    // Try finding by exact match or by common variations
     const user = await this.prisma.user.findFirst({
       where: {
         OR: [
-          { phone: phone },                          // Exact as passed
-          { phone: searchPhone },                    // 10 digits
-          { phone: `0${searchPhone}` },               // Leading 0
-          { phone: standardFormat },                 // With +91
-          { phone: `+91 ${searchPhone.slice(0, 5)} ${searchPhone.slice(5)}` }, // With space (e.g. +91 98765 43210)
-        ]
-      }
+          { phone: phone },
+          { phone: searchPhone },
+          { phone: `0${searchPhone}` },
+          { phone: standardFormat },
+          { phone: `+91 ${searchPhone.slice(0, 5)} ${searchPhone.slice(5)}` },
+        ],
+      },
     });
 
     if (!user) {
-      this.logger.warn(`Login failed: User not found for phone '${phone}' (search queries: ${searchPhone})`);
-      throw new BadRequestException('Invalid credentials - User not found');
+      this.logger.warn(`PIN login failed: User not found for phone '${phone}' (search queries: ${searchPhone})`);
+      throw new BadRequestException('Account not found');
     }
 
-    // Check password
-    if (user.password) {
-      const match = await bcrypt.compare(plain, user.password);
-      if (!match) {
-        this.logger.warn(`Login failed: Password mismatch for user ${user.id} (${user.phone})`);
-        throw new BadRequestException('Invalid credentials - Password mismatch');
-      }
-    } else {
-      this.logger.warn(`Login failed: User ${user.id} has no password set`);
-      // If no password (legacy user?), fail
-      throw new BadRequestException('Invalid credentials - No password set for this user');
+    if (!user.pin) {
+      this.logger.warn(`PIN login failed: User ${user.id} has no PIN set`);
+      throw new BadRequestException('PIN not set. Please reset your PIN.');
     }
 
-    return { id: user.id, name: user.name };
+    const match = await bcrypt.compare(pin, user.pin);
+    if (!match) {
+      this.logger.warn(`PIN login failed: PIN mismatch for user ${user.id} (${user.phone})`);
+      throw new BadRequestException('Incorrect PIN');
+    }
+
+    const payload = { sub: user.authUserId, role: user.role, id: user.id };
+    const accessToken = this.jwtService.sign(payload);
+
+    return {
+      access_token: accessToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        role: user.role,
+      },
+    };
   }
 
   async recruits(userId: number, take = 50) {
@@ -156,33 +180,52 @@ export class UsersService {
 
   async recruitmentProgress(userId: number) {
     try {
-      const [total, user] = await Promise.all([
+      // 1. Get Total Recruits (everyone they referred)
+      const [totalRecruits, user] = await Promise.all([
         this.prisma.user.count({ where: { referredByUserId: userId } }),
         this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } }),
       ]);
+
       const role = (user?.role as string) ?? 'Member';
-
       let target = 0;
-      // "Senior Members (CWC/Extended) target 5 workers"
-      if (['CWCPresident', 'CWCMember', 'ExtendedMember'].includes(role)) {
+      let nextMilestone = '';
+
+      // CASE 1: Ordinary Member (trying to become President)
+      if (role === 'Member') {
         target = 5;
-      }
-      // "Workers/Members Target 21 members"
-      else {
-        target = 21;
+        nextMilestone = 'Recruit 5 to become CWC President';
       }
 
-      const remaining = Math.max(target - total, 0);
-      return { role, total, target, remaining };
-    } catch (error) {
-      // Safely log error even if logger is undefined (though it shouldn't be)
-      if (this.logger) {
-        this.logger.error(`recruitmentProgress failed for user ${userId}:`, error);
-      } else {
-        console.error(`recruitmentProgress failed for user ${userId}:`, error);
+      // CASE 2: CWC President (needs 5 core + 20 general = 25 total)
+      else if (role === 'CWCPresident') {
+        target = 25;
+        nextMilestone = 'Complete your Presidential Quota (20 General Members)';
       }
-      // Return safe default so dashboard doesn't crash
-      return { role: 'Member', total: 0, target: 21, remaining: 21 };
+
+      // CASE 3: CWC Member (0 core + 20 general = 20 total)
+      else if (['CWCMember', 'ExtendedMember'].includes(role)) {
+        target = 20;
+        nextMilestone = 'Complete your Member Quota';
+      }
+
+      // CASE 4: Upper management / others (APC/PPC/SSP/etc.)
+      else {
+        target = 25;
+        nextMilestone = 'Maintain Leadership Status';
+      }
+
+      const remaining = Math.max(target - totalRecruits, 0);
+
+      return {
+        role,
+        total: totalRecruits,
+        target,
+        remaining,
+        nextMilestone,
+      };
+    } catch (error) {
+      this.logger.error('recruitmentProgress failed', error as any);
+      return { role: 'Member', total: 0, target: 5, remaining: 5 };
     }
   }
 
@@ -242,6 +285,12 @@ export class UsersService {
       }
     }
 
+    // Fetch primary committee membership (for CWC name on ID card)
+    const committeeMember = await this.prisma.committeeMember.findFirst({
+      where: { userId: userId },
+      include: { committee: { select: { name: true } } },
+    });
+
     const user = {
       id: baseUser.id,
       name: baseUser.name,
@@ -251,6 +300,7 @@ export class UsersService {
       memberId: baseUser.memberId,
       photoUrl: baseUser.photoUrl,
       localUnit,
+      cwcName: committeeMember?.committee?.name ?? null,
     };
 
     const recruitsCount = await this.prisma.user.count({ where: { referredByUserId: userId } });
@@ -291,12 +341,15 @@ export class UsersService {
   }
 
   async updateProfile(userId: number, dto: UpdateProfileDto) {
-    // Only allow updating photoUrl for now
+    const data: any = {};
+    if (dto.photoUrl !== undefined) data.photoUrl = dto.photoUrl;
+    if (dto.pin) {
+      data.pin = await bcrypt.hash(dto.pin, 10);
+    }
+
     const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: {
-        photoUrl: dto.photoUrl ?? undefined,
-      },
+      data,
       select: { id: true, name: true, memberId: true, photoUrl: true, role: true },
     });
     return updated;

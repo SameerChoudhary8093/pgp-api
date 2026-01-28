@@ -37,10 +37,17 @@ export class RegisterDto {
   @Type(() => Number)
   localUnitId?: number;
 
+  @IsOptional()
   @IsString()
   @MinLength(8)
   @MaxLength(72)
-  password!: string;
+  password?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(4)
+  @MaxLength(6)
+  pin?: string;
 
   @IsOptional()
   @IsString()

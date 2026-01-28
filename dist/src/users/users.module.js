@@ -8,20 +8,28 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersModule = void 0;
 const common_1 = require("@nestjs/common");
+const jwt_1 = require("@nestjs/jwt");
 const users_service_1 = require("./users.service");
 const users_controller_1 = require("./users.controller");
 const prisma_service_1 = require("../prisma.service");
 const auth_module_1 = require("../auth/auth.module");
 const audit_service_1 = require("../audit/audit.service");
 const admin_users_controller_1 = require("./admin-users.controller");
+const promotion_service_1 = require("./promotion.service");
 let UsersModule = class UsersModule {
 };
 exports.UsersModule = UsersModule;
 exports.UsersModule = UsersModule = __decorate([
     (0, common_1.Module)({
-        imports: [auth_module_1.AuthModule],
+        imports: [
+            auth_module_1.AuthModule,
+            jwt_1.JwtModule.register({
+                secret: process.env.JWT_SECRET || 'dev-secret',
+                signOptions: { expiresIn: '7d' },
+            }),
+        ],
         controllers: [users_controller_1.UsersController, admin_users_controller_1.AdminUsersController],
-        providers: [users_service_1.UsersService, prisma_service_1.PrismaService, audit_service_1.AuditService],
+        providers: [users_service_1.UsersService, prisma_service_1.PrismaService, audit_service_1.AuditService, promotion_service_1.PromotionService],
         exports: [users_service_1.UsersService],
     })
 ], UsersModule);

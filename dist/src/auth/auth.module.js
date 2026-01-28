@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthModule = void 0;
 const common_1 = require("@nestjs/common");
+const jwt_1 = require("@nestjs/jwt");
 const prisma_service_1 = require("../prisma.service");
 const supabase_service_1 = require("./supabase.service");
 const auth_guard_1 = require("./auth.guard");
@@ -17,8 +18,14 @@ let AuthModule = class AuthModule {
 exports.AuthModule = AuthModule;
 exports.AuthModule = AuthModule = __decorate([
     (0, common_1.Module)({
+        imports: [
+            jwt_1.JwtModule.register({
+                secret: process.env.JWT_SECRET || 'dev-secret',
+                signOptions: { expiresIn: '7d' },
+            }),
+        ],
         providers: [prisma_service_1.PrismaService, supabase_service_1.SupabaseService, auth_guard_1.AuthGuard, roles_guard_1.RolesGuard],
-        exports: [supabase_service_1.SupabaseService, auth_guard_1.AuthGuard, roles_guard_1.RolesGuard],
+        exports: [supabase_service_1.SupabaseService, auth_guard_1.AuthGuard, roles_guard_1.RolesGuard, jwt_1.JwtModule],
     })
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

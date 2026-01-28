@@ -2,10 +2,15 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { Request } from 'express';
 import { SupabaseService } from './supabase.service';
 import { PrismaService } from '../prisma.service';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private supabase: SupabaseService, private prisma: PrismaService) { }
+  constructor(
+    private supabase: SupabaseService,
+    private prisma: PrismaService,
+    private jwtService: JwtService
+  ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<Request & { user?: any; auth?: any }>();
@@ -48,12 +53,28 @@ export class AuthGuard implements CanActivate {
     const bearer = token.slice('Bearer '.length);
     let payload;
     let user;
+
+    // 1. Try verifying as Custom JWT (PIN Login)
     try {
-      payload = await this.supabase.verifyToken(bearer);
-      user = await this.supabase.getUserFromPayload(payload);
-    } catch (error: any) {
-      console.error('AuthGuard verification failed:', error.message);
-      throw new UnauthorizedException('Authentication failed');
+      payload = this.jwtService.verify(bearer);
+      // Custom JWT payload: { sub: authUserId, role: role, id: userId }
+      if (payload && payload.id) {
+        user = await (this.prisma as any).user.findUnique({ where: { id: payload.id } });
+      }
+    } catch (e) {
+      // Ignore JWT verification errors, proceed to Supabase check
+    }
+
+    // 2. If not a valid JWT, try Supabase
+    if (!user) {
+      try {
+        payload = await this.supabase.verifyToken(bearer);
+        user = await this.supabase.getUserFromPayload(payload);
+      } catch (error: any) {
+        // Only log if we haven't found a user yet
+        // console.error('AuthGuard verification failed:', error.message);
+        throw new UnauthorizedException('Authentication failed');
+      }
     }
 
     if (!user) throw new UnauthorizedException('User not found');

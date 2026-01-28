@@ -44,9 +44,21 @@ let UsersController = class UsersController {
         catch (error) {
             console.error('Login error details:', error);
             throw new common_1.HttpException({
-                status: common_1.HttpStatus.INTERNAL_SERVER_ERROR,
+                status: error.status || common_1.HttpStatus.INTERNAL_SERVER_ERROR,
                 message: error.message || 'Internal Server Error',
-            }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+            }, error.status || common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    async loginWithPin(dto) {
+        try {
+            const result = await this.usersService.loginWithPin(dto.phone, dto.pin);
+            return result;
+        }
+        catch (error) {
+            throw new common_1.HttpException({
+                status: error.status || common_1.HttpStatus.INTERNAL_SERVER_ERROR,
+                message: error.message || 'Internal Server Error',
+            }, error.status || common_1.HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
     meSummary(req) {
@@ -111,6 +123,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "login", null);
+__decorate([
+    (0, common_1.Post)('login-pin'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "loginWithPin", null);
 __decorate([
     (0, common_1.Get)('me/summary'),
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard),

@@ -13,12 +13,15 @@ exports.AuthGuard = void 0;
 const common_1 = require("@nestjs/common");
 const supabase_service_1 = require("./supabase.service");
 const prisma_service_1 = require("../prisma.service");
+const jwt_1 = require("@nestjs/jwt");
 let AuthGuard = class AuthGuard {
     supabase;
     prisma;
-    constructor(supabase, prisma) {
+    jwtService;
+    constructor(supabase, prisma, jwtService) {
         this.supabase = supabase;
         this.prisma = prisma;
+        this.jwtService = jwtService;
     }
     async canActivate(context) {
         const req = context.switchToHttp().getRequest();
@@ -59,12 +62,21 @@ let AuthGuard = class AuthGuard {
         let payload;
         let user;
         try {
-            payload = await this.supabase.verifyToken(bearer);
-            user = await this.supabase.getUserFromPayload(payload);
+            payload = this.jwtService.verify(bearer);
+            if (payload && payload.id) {
+                user = await this.prisma.user.findUnique({ where: { id: payload.id } });
+            }
         }
-        catch (error) {
-            console.error('AuthGuard verification failed:', error.message);
-            throw new common_1.UnauthorizedException('Authentication failed');
+        catch (e) {
+        }
+        if (!user) {
+            try {
+                payload = await this.supabase.verifyToken(bearer);
+                user = await this.supabase.getUserFromPayload(payload);
+            }
+            catch (error) {
+                throw new common_1.UnauthorizedException('Authentication failed');
+            }
         }
         if (!user)
             throw new common_1.UnauthorizedException('User not found');
@@ -76,6 +88,8 @@ let AuthGuard = class AuthGuard {
 exports.AuthGuard = AuthGuard;
 exports.AuthGuard = AuthGuard = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [supabase_service_1.SupabaseService, prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [supabase_service_1.SupabaseService,
+        prisma_service_1.PrismaService,
+        jwt_1.JwtService])
 ], AuthGuard);
 //# sourceMappingURL=auth.guard.js.map

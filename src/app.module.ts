@@ -25,11 +25,11 @@ import { CommitteesModule } from './committees/committees.module';
       max: 1000,
     }),
 
-    // Throttling: 10 requests per 60 seconds
+    // Throttling: 100 requests per 60 seconds
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
-        limit: 10,
+        limit: 100,
       },
     ]),
 

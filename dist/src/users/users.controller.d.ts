@@ -6,16 +6,21 @@ export declare class UsersController {
     private readonly usersService;
     constructor(usersService: UsersService);
     register(dto: RegisterDto): Promise<{
-        id: number;
         name: string;
         phone: string;
         memberId: string | null;
         referralCode: string | null;
+        id: number;
         referredByUserId: number | null;
     }>;
-    login(dto: any): Promise<{
-        id: number;
-        name: string;
+    login(dto: any): Promise<void>;
+    loginWithPin(dto: any): Promise<{
+        access_token: string;
+        user: {
+            id: number;
+            name: string;
+            role: import(".prisma/client").$Enums.Role;
+        };
     }>;
     meSummary(req: any): Promise<{
         user: null;
@@ -31,22 +36,30 @@ export declare class UsersController {
             memberId: any;
             photoUrl: any;
             localUnit: any;
+            cwcName: string | null;
         };
         recruitsCount: number;
         votesCast: number;
     }>;
     updateMe(req: any, dto: UpdateProfileDto): Promise<{
-        id: number;
         name: string;
         role: import(".prisma/client").$Enums.Role;
         memberId: string | null;
         photoUrl: string | null;
+        id: number;
     }>;
     myRecruitmentProgress(req: any): Promise<{
         role: string;
         total: number;
         target: number;
         remaining: number;
+        nextMilestone: string;
+    } | {
+        role: string;
+        total: number;
+        target: number;
+        remaining: number;
+        nextMilestone?: undefined;
     }>;
     uploadMyPhoto(req: any, file: any): Promise<{
         photoUrl: string | null;
@@ -57,21 +70,21 @@ export declare class UsersController {
     myRecruits(req: any, take?: string): Promise<{
         total: number;
         recruits: {
-            id: number;
             name: string;
             phone: string;
             photoUrl: string | null;
             createdAt: Date;
+            id: number;
         }[];
     }>;
     recruits(id: number, take?: string): Promise<{
         total: number;
         recruits: {
-            id: number;
             name: string;
             phone: string;
             photoUrl: string | null;
             createdAt: Date;
+            id: number;
         }[];
     }>;
     summary(id: number): Promise<{
@@ -88,6 +101,7 @@ export declare class UsersController {
             memberId: any;
             photoUrl: any;
             localUnit: any;
+            cwcName: string | null;
         };
         recruitsCount: number;
         votesCast: number;
@@ -97,27 +111,34 @@ export declare class UsersController {
         total: number;
         target: number;
         remaining: number;
+        nextMilestone: string;
+    } | {
+        role: string;
+        total: number;
+        target: number;
+        remaining: number;
+        nextMilestone?: undefined;
     }>;
     leaderboard(take?: string): Promise<{
         user: {
-            id: number;
             name: string;
             phone: string;
+            id: number;
         } | null;
         recruits: number;
     }[]>;
     adminSearch(q?: string, take?: string): Promise<{
-        id: number;
         name: string;
         phone: string;
         role: import(".prisma/client").$Enums.Role;
         memberId: string | null;
+        id: number;
     }[]>;
     adminUpdateRole(id: number, dto: UpdateRoleDto): Promise<{
-        id: number;
         name: string;
         phone: string;
         role: import(".prisma/client").$Enums.Role;
         memberId: string | null;
+        id: number;
     }>;
 }

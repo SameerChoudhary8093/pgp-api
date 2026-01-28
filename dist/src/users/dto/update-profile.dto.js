@@ -13,6 +13,7 @@ exports.UpdateProfileDto = void 0;
 const class_validator_1 = require("class-validator");
 class UpdateProfileDto {
     photoUrl;
+    pin;
 }
 exports.UpdateProfileDto = UpdateProfileDto;
 __decorate([
@@ -22,4 +23,10 @@ __decorate([
     (0, class_validator_1.MaxLength)(500),
     __metadata("design:type", String)
 ], UpdateProfileDto.prototype, "photoUrl", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(6),
+    __metadata("design:type", String)
+], UpdateProfileDto.prototype, "pin", void 0);
 //# sourceMappingURL=update-profile.dto.js.map

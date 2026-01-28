@@ -30,9 +30,22 @@ export class UsersController {
     } catch (error: any) {
       console.error('Login error details:', error);
       throw new HttpException({
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
         message: error.message || 'Internal Server Error',
-      }, HttpStatus.INTERNAL_SERVER_ERROR);
+      }, error.status || HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('login-pin')
+  async loginWithPin(@Body() dto: any) {
+    try {
+      const result = await this.usersService.loginWithPin(dto.phone, dto.pin);
+      return result;
+    } catch (error: any) {
+      throw new HttpException({
+        status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message || 'Internal Server Error',
+      }, error.status || HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

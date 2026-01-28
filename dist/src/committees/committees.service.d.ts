@@ -8,7 +8,10 @@ export declare class CommitteesService {
         id: number;
         name: string;
         localUnitId: number;
+        createdAt: Date;
         type: import(".prisma/client").$Enums.CommitteeType;
+        letter: string | null;
+        sequenceNumber: number | null;
     }>;
     addMember(committeeId: number, userId: number, role: string, makePresident: boolean, actorUserId: number, reason?: string): Promise<{
         ok: boolean;
@@ -32,8 +35,8 @@ export declare class CommitteesService {
             role: import(".prisma/client").$Enums.Role | null;
             createdAt: Date;
             userId: number;
-            committeeId: number;
             isPresident: boolean;
+            committeeId: number;
         })[];
     }>;
 }

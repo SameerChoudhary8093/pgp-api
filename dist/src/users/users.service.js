@@ -51,8 +51,10 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma.service");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const audit_service_1 = require("../audit/audit.service");
+const promotion_service_1 = require("./promotion.service");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const jwt_1 = require("@nestjs/jwt");
 function randomReferralCode(length = 8) {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -63,10 +65,14 @@ function randomReferralCode(length = 8) {
 let UsersService = UsersService_1 = class UsersService {
     prisma;
     audit;
+    promotion;
+    jwtService;
     logger = new common_1.Logger(UsersService_1.name);
-    constructor(prisma, audit) {
+    constructor(prisma, audit, promotion, jwtService) {
         this.prisma = prisma;
         this.audit = audit;
+        this.promotion = promotion;
+        this.jwtService = jwtService;
     }
     async register(dto) {
         const searchPhone = dto.phone.replace(/[^0-9]/g, '').slice(-10);
@@ -108,7 +114,8 @@ let UsersService = UsersService_1 = class UsersService {
         const finalClash = await this.prisma.user.findUnique({ where: { referralCode } });
         if (finalClash)
             throw new common_1.BadRequestException('Please retry: referral code generation conflict');
-        const passwordHash = await bcryptjs_1.default.hash(dto.password, 10);
+        const passwordHash = dto.password ? await bcryptjs_1.default.hash(dto.password, 10) : undefined;
+        const pinHash = dto.pin ? await bcryptjs_1.default.hash(dto.pin, 10) : undefined;
         async function generateMemberId() {
             for (let i = 0; i < 10; i++) {
                 const n = Math.floor(Math.random() * 999999) + 1;
@@ -128,17 +135,25 @@ let UsersService = UsersService_1 = class UsersService {
                 localUnitId: localUnitId ?? undefined,
                 referralCode,
                 referredByUserId: referredByUserId ?? undefined,
-                password: passwordHash,
+                pin: pinHash,
                 authUserId: dto.authUserId ?? undefined,
                 memberId,
             },
             select: { id: true, name: true, phone: true, referralCode: true, referredByUserId: true, memberId: true },
         });
+        if (referredByUserId) {
+            this.promotion
+                .checkAndPromote(referredByUserId)
+                .catch((err) => this.logger.error('checkAndPromote failed', err));
+        }
         return user;
     }
     async login(phone, plain) {
-        if (!phone || !plain)
-            throw new common_1.BadRequestException('Phone and password required');
+        throw new common_1.BadRequestException('Password login is no longer supported. Please use PIN login.');
+    }
+    async loginWithPin(phone, pin) {
+        if (!phone || !pin)
+            throw new common_1.BadRequestException('Phone and PIN required');
         const cleanPhone = phone.replace(/[^0-9]/g, '');
         if (cleanPhone.length < 10)
             throw new common_1.BadRequestException('Invalid phone number format');
@@ -152,25 +167,32 @@ let UsersService = UsersService_1 = class UsersService {
                     { phone: `0${searchPhone}` },
                     { phone: standardFormat },
                     { phone: `+91 ${searchPhone.slice(0, 5)} ${searchPhone.slice(5)}` },
-                ]
-            }
+                ],
+            },
         });
         if (!user) {
-            this.logger.warn(`Login failed: User not found for phone '${phone}' (search queries: ${searchPhone})`);
-            throw new common_1.BadRequestException('Invalid credentials - User not found');
+            this.logger.warn(`PIN login failed: User not found for phone '${phone}' (search queries: ${searchPhone})`);
+            throw new common_1.BadRequestException('Account not found');
         }
-        if (user.password) {
-            const match = await bcryptjs_1.default.compare(plain, user.password);
-            if (!match) {
-                this.logger.warn(`Login failed: Password mismatch for user ${user.id} (${user.phone})`);
-                throw new common_1.BadRequestException('Invalid credentials - Password mismatch');
-            }
+        if (!user.pin) {
+            this.logger.warn(`PIN login failed: User ${user.id} has no PIN set`);
+            throw new common_1.BadRequestException('PIN not set. Please reset your PIN.');
         }
-        else {
-            this.logger.warn(`Login failed: User ${user.id} has no password set`);
-            throw new common_1.BadRequestException('Invalid credentials - No password set for this user');
+        const match = await bcryptjs_1.default.compare(pin, user.pin);
+        if (!match) {
+            this.logger.warn(`PIN login failed: PIN mismatch for user ${user.id} (${user.phone})`);
+            throw new common_1.BadRequestException('Incorrect PIN');
         }
-        return { id: user.id, name: user.name };
+        const payload = { sub: user.authUserId, role: user.role, id: user.id };
+        const accessToken = this.jwtService.sign(payload);
+        return {
+            access_token: accessToken,
+            user: {
+                id: user.id,
+                name: user.name,
+                role: user.role,
+            },
+        };
     }
     async recruits(userId, take = 50) {
         const recruits = await this.prisma.user.findMany({
@@ -184,29 +206,41 @@ let UsersService = UsersService_1 = class UsersService {
     }
     async recruitmentProgress(userId) {
         try {
-            const [total, user] = await Promise.all([
+            const [totalRecruits, user] = await Promise.all([
                 this.prisma.user.count({ where: { referredByUserId: userId } }),
                 this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } }),
             ]);
             const role = user?.role ?? 'Member';
             let target = 0;
-            if (['CWCPresident', 'CWCMember', 'ExtendedMember'].includes(role)) {
+            let nextMilestone = '';
+            if (role === 'Member') {
                 target = 5;
+                nextMilestone = 'Recruit 5 to become CWC President';
+            }
+            else if (role === 'CWCPresident') {
+                target = 25;
+                nextMilestone = 'Complete your Presidential Quota (20 General Members)';
+            }
+            else if (['CWCMember', 'ExtendedMember'].includes(role)) {
+                target = 20;
+                nextMilestone = 'Complete your Member Quota';
             }
             else {
-                target = 21;
+                target = 25;
+                nextMilestone = 'Maintain Leadership Status';
             }
-            const remaining = Math.max(target - total, 0);
-            return { role, total, target, remaining };
+            const remaining = Math.max(target - totalRecruits, 0);
+            return {
+                role,
+                total: totalRecruits,
+                target,
+                remaining,
+                nextMilestone,
+            };
         }
         catch (error) {
-            if (this.logger) {
-                this.logger.error(`recruitmentProgress failed for user ${userId}:`, error);
-            }
-            else {
-                console.error(`recruitmentProgress failed for user ${userId}:`, error);
-            }
-            return { role: 'Member', total: 0, target: 21, remaining: 21 };
+            this.logger.error('recruitmentProgress failed', error);
+            return { role: 'Member', total: 0, target: 5, remaining: 5 };
         }
     }
     async summary(userId) {
@@ -259,6 +293,10 @@ let UsersService = UsersService_1 = class UsersService {
                 localUnit = null;
             }
         }
+        const committeeMember = await this.prisma.committeeMember.findFirst({
+            where: { userId: userId },
+            include: { committee: { select: { name: true } } },
+        });
         const user = {
             id: baseUser.id,
             name: baseUser.name,
@@ -268,6 +306,7 @@ let UsersService = UsersService_1 = class UsersService {
             memberId: baseUser.memberId,
             photoUrl: baseUser.photoUrl,
             localUnit,
+            cwcName: committeeMember?.committee?.name ?? null,
         };
         const recruitsCount = await this.prisma.user.count({ where: { referredByUserId: userId } });
         let votesCast = 0;
@@ -299,11 +338,15 @@ let UsersService = UsersService_1 = class UsersService {
         return entries.filter((e) => e.user);
     }
     async updateProfile(userId, dto) {
+        const data = {};
+        if (dto.photoUrl !== undefined)
+            data.photoUrl = dto.photoUrl;
+        if (dto.pin) {
+            data.pin = await bcryptjs_1.default.hash(dto.pin, 10);
+        }
         const updated = await this.prisma.user.update({
             where: { id: userId },
-            data: {
-                photoUrl: dto.photoUrl ?? undefined,
-            },
+            data,
             select: { id: true, name: true, memberId: true, photoUrl: true, role: true },
         });
         return updated;
@@ -415,6 +458,9 @@ let UsersService = UsersService_1 = class UsersService {
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = UsersService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService, audit_service_1.AuditService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        audit_service_1.AuditService,
+        promotion_service_1.PromotionService,
+        jwt_1.JwtService])
 ], UsersService);
 //# sourceMappingURL=users.service.js.map

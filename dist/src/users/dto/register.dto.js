@@ -21,6 +21,7 @@ class RegisterDto {
     wardId;
     localUnitId;
     password;
+    pin;
     referralCode;
     authUserId;
 }
@@ -68,11 +69,19 @@ __decorate([
     __metadata("design:type", Number)
 ], RegisterDto.prototype, "localUnitId", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MinLength)(8),
     (0, class_validator_1.MaxLength)(72),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "password", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(4),
+    (0, class_validator_1.MaxLength)(6),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "pin", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),

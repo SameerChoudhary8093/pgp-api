@@ -6,7 +6,8 @@ export declare class RegisterDto {
     gpId?: number;
     wardId?: number;
     localUnitId?: number;
-    password: string;
+    password?: string;
+    pin?: string;
     referralCode?: string;
     authUserId?: string;
 }
