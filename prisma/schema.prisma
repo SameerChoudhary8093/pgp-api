@@ -51,6 +51,7 @@ model User {
   id                   Int                @id @default(autoincrement())
   name                 String
   phone                String             @unique
+  passwordHash         String
   pin                  String?            // Hashed PIN (4-6 digits)
   address              String?            // Made optional for flexibility
   

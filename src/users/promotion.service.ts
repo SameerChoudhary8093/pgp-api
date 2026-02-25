@@ -24,6 +24,15 @@ export class PromotionService {
 
     if (!referrer || !referrer.localUnit) return;
 
+    // If the referrer is already in a leadership role, do not promote again
+    const leaderRoles = ['CWCPresident', 'APC', 'PPC', 'SSP', 'ALCPresident', 'SLCPresident'];
+    if (leaderRoles.includes(referrer.role as any)) {
+      this.logger.log(
+        `User ${referrer.id} is already a leader (${referrer.role}). Skipping promotion.`,
+      );
+      return;
+    }
+
     // Geo‑fence: only recruits from the SAME Local Unit
     const localRecruits = referrer.recruits.filter(
       (r: any) => r.localUnitId === referrer.localUnitId,
@@ -40,7 +49,7 @@ export class PromotionService {
   }
 
   private async promoteToPresident(president: any, coreTeam: any[]) {
-    // Calculate per‑unit sequence number (CWC 1, CWC 2, ...)
+    // Calculate per‑unit sequence number purely for naming (CWC Ward 1, CWC Ward 1 2, ...)
     const count = await this.prisma.committee.count({
       where: { localUnitId: president.localUnitId, type: 'CWC' as any },
     });
@@ -58,7 +67,6 @@ export class PromotionService {
       const committee = await tx.committee.create({
         data: {
           name: committeeName,
-          sequenceNumber: nextSeq,
           localUnitId: president.localUnitId,
           type: 'CWC' as any,
         },

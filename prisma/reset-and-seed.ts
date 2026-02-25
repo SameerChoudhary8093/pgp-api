@@ -1,6 +1,7 @@
 // pgp-api/prisma/reset-and-seed.ts
 
 import { PrismaClient } from '@prisma/client';
+import { seedFromClean } from './seed-from-clean';
 
 const prisma = new PrismaClient();
 
@@ -23,14 +24,16 @@ async function resetAndSeed() {
   console.log(`After clear  -> Loksabha: ${afterClearLs}, Vidhansabha: ${afterClearVs}, LocalUnits: ${afterClearLu}`);
 
   console.log('✅ All geo tables cleared. Running seed-production...');
-
-  // Run the existing seed script (it creates its own PrismaClient and disconnects)
-
+  await seedFromClean(prisma);
 
   const afterSeedLs = await prisma.loksabha.count();
   const afterSeedVs = await prisma.vidhansabha.count();
   const afterSeedLu = await prisma.localUnit.count();
   console.log(`After seed   -> Loksabha: ${afterSeedLs}, Vidhansabha: ${afterSeedVs}, LocalUnits: ${afterSeedLu}`);
+
+  if (afterSeedLu < 30000) {
+    console.warn('⚠️ LocalUnit count is below expected threshold (30,000). Check clean_infrastructure.json and mapping quality.');
+  }
 
   console.log('✅ Reset + Seed complete.');
 }

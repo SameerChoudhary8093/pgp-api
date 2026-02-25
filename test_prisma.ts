@@ -1,12 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient({
-    datasources: {
-        db: {
-            url: 'postgresql://postgres:pgp%40123jaipur@db.jgtseacyfwgbpltvlxno.supabase.co:5432/postgres'
-        }
-    }
-});
+const prisma = new PrismaClient();
 
 async function main() {
     try {

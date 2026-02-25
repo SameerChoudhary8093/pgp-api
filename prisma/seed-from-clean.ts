@@ -4,8 +4,6 @@ import { PrismaClient, LocalUnitType } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const prisma = new PrismaClient();
-
 type CleanUnit = {
   loksabha: string;
   vidhansabha: string;
@@ -13,12 +11,8 @@ type CleanUnit = {
   type: LocalUnitType;
 };
 
-async function main() {
-  console.log('🌱 Seeding Clean Data (pgp-api local script)...');
-
-  console.log('Connecting to database via Prisma...');
-  await prisma.$connect();
-  console.log('✅ Database connection established.');
+export async function seedFromClean(prisma: PrismaClient) {
+  console.log('🌱 Seeding Clean Data (clean_infrastructure.json)...');
 
   const dataPath = path.resolve(__dirname, '../../packages/db/prisma/clean_infrastructure.json');
   if (!fs.existsSync(dataPath)) {
@@ -116,12 +110,22 @@ async function main() {
   console.log('✅ Seeding complete.');
 }
 
-main()
-  .catch((e) => {
+async function main() {
+  const prisma = new PrismaClient();
+  try {
+    console.log('Connecting to database via Prisma...');
+    await prisma.$connect();
+    console.log('✅ Database connection established.');
+    await seedFromClean(prisma);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+if (require.main === module) {
+  main().catch((e) => {
     console.error(e);
     process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
   });
+}
 

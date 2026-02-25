@@ -69,7 +69,7 @@ export class CommitteesService {
     if (!pres) return { committee: null, members: [] };
 
     const members = await this.prisma.committeeMember.findMany({
-      where: { committeeId: pres.committeeId, role: { in: ['CWCMember', 'ExtendedMember'] as any } },
+      where: { committeeId: pres.committeeId, role: { in: ['CWCMember'] as any } },
       include: { user: { select: { id: true, name: true, phone: true, role: true } } },
       orderBy: { userId: 'asc' },
     });

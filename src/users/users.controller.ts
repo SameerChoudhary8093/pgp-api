@@ -20,22 +20,6 @@ export class UsersController {
     return this.usersService.register(dto);
   }
 
-  @Post('login')
-  async login(@Body() dto: any) {
-    console.log('Login attempt for:', dto.phone);
-    try {
-      const result = await this.usersService.login(dto.phone, dto.password);
-      console.log('Login successful for:', dto.phone);
-      return result;
-    } catch (error: any) {
-      console.error('Login error details:', error);
-      throw new HttpException({
-        status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        message: error.message || 'Internal Server Error',
-      }, error.status || HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
   @Post('login-pin')
   async loginWithPin(@Body() dto: any) {
     try {
@@ -47,6 +31,34 @@ export class UsersController {
         message: error.message || 'Internal Server Error',
       }, error.status || HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  @Post('set-pin-with-token')
+  async setPinWithToken(@Req() req: any, @Body() dto: any) {
+    const pin = String(dto?.pin || '');
+    const authHeader = String(req?.headers?.authorization || '');
+
+    // Local dev fallback used by forgot-PIN simulation flow
+    if (authHeader.startsWith('Bearer dev-token:')) {
+      const phone = authHeader.slice('Bearer dev-token:'.length).trim();
+      return this.usersService.setPinByPhoneForDev(phone, pin);
+    }
+
+    // Optional local fallback if frontend passes phone directly in dev mode
+    if ((process.env.AUTH_DEV_MODE === 'true') && dto?.phone) {
+      return this.usersService.setPinByPhoneForDev(String(dto.phone), pin);
+    }
+
+    // Standard authenticated flow (requires valid auth middleware earlier in stack)
+    const userId = req?.user?.id;
+    if (!userId) {
+      throw new HttpException({
+        status: HttpStatus.UNAUTHORIZED,
+        message: 'Unauthorized: missing reset token/session',
+      }, HttpStatus.UNAUTHORIZED);
+    }
+
+    return this.usersService.setPinWithToken(userId, pin);
   }
 
   // Authenticated: current user's summary

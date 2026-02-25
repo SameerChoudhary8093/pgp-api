@@ -73,8 +73,16 @@ export class UsersService {
     const finalClash = await this.prisma.user.findUnique({ where: { referralCode } });
     if (finalClash) throw new BadRequestException('Please retry: referral code generation conflict');
 
-    const passwordHash = dto.password ? await bcrypt.hash(dto.password, 10) : undefined;
+    const passwordHash = dto.password
+      ? await bcrypt.hash(dto.password, 10)
+      : dto.pin
+        ? await bcrypt.hash(dto.pin, 10)
+        : undefined;
     const pinHash = dto.pin ? await bcrypt.hash(dto.pin, 10) : undefined;
+
+    if (!passwordHash) {
+      throw new BadRequestException('Password is required');
+    }
 
     // Generate unique memberId: PGP-######
     async function generateMemberId(): Promise<string> {
@@ -97,6 +105,7 @@ export class UsersService {
         localUnitId: localUnitId ?? undefined,
         referralCode,
         referredByUserId: referredByUserId ?? undefined,
+        passwordHash,
         pin: pinHash,
         authUserId: dto.authUserId ?? undefined,
         memberId,
@@ -110,11 +119,6 @@ export class UsersService {
     }
 
     return user;
-  }
-
-  async login(phone: string, plain: string) {
-    // Password-based login is no longer supported; use Supabase or PIN login instead.
-    throw new BadRequestException('Password login is no longer supported. Please use PIN login.');
   }
 
   async loginWithPin(phone: string, pin: string) {
@@ -167,12 +171,70 @@ export class UsersService {
     };
   }
 
+  async setPinWithToken(userId: number, pin: string) {
+    if (!userId || Number.isNaN(Number(userId))) {
+      throw new BadRequestException('Invalid user');
+    }
+    if (!pin || !/^\d{4,6}$/.test(String(pin))) {
+      throw new BadRequestException('PIN must be 4-6 digits');
+    }
+
+    const pinHash = await bcrypt.hash(String(pin), 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { pin: pinHash, passwordHash: pinHash },
+      select: { id: true },
+    });
+    return { ok: true };
+  }
+
+  async setPinByPhoneForDev(phone: string, pin: string) {
+    if (process.env.AUTH_DEV_MODE !== 'true') {
+      throw new BadRequestException('Dev PIN reset is disabled');
+    }
+    if (!phone) {
+      throw new BadRequestException('Phone is required');
+    }
+    if (!pin || !/^\d{4,6}$/.test(String(pin))) {
+      throw new BadRequestException('PIN must be 4-6 digits');
+    }
+
+    const cleanPhone = String(phone).replace(/[^0-9]/g, '');
+    if (cleanPhone.length < 10) throw new BadRequestException('Invalid phone number format');
+    const searchPhone = cleanPhone.slice(-10);
+    const standardFormat = `+91${searchPhone}`;
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: phone },
+          { phone: searchPhone },
+          { phone: `0${searchPhone}` },
+          { phone: standardFormat },
+          { phone: `+91 ${searchPhone.slice(0, 5)} ${searchPhone.slice(5)}` },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!user) throw new BadRequestException('Account not found');
+
+    const pinHash = await bcrypt.hash(String(pin), 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { pin: pinHash, passwordHash: pinHash },
+      select: { id: true },
+    });
+
+    return { ok: true };
+  }
+
   async recruits(userId: number, take = 50) {
     const recruits = await this.prisma.user.findMany({
       where: { referredByUserId: userId },
       orderBy: { id: 'desc' },
       take,
-      select: { id: true, name: true, phone: true, createdAt: true, photoUrl: true },
+      select: { id: true, name: true, phone: true, createdAt: true, photoUrl: true, localUnitId: true },
     });
     const total = await this.prisma.user.count({ where: { referredByUserId: userId } });
     return { total, recruits };
@@ -180,52 +242,57 @@ export class UsersService {
 
   async recruitmentProgress(userId: number) {
     try {
-      // 1. Get Total Recruits (everyone they referred)
-      const [totalRecruits, user] = await Promise.all([
-        this.prisma.user.count({ where: { referredByUserId: userId } }),
-        this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } }),
-      ]);
+      const userPromise = this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true, localUnitId: true },
+      });
 
-      const role = (user?.role as string) ?? 'Member';
+      const totalRecruitsPromise = this.prisma.user.count({
+        where: { referredByUserId: userId },
+      });
+
+      const user = await userPromise;
+
+      const localRecruitsPromise = this.prisma.user.count({
+        where: {
+          referredByUserId: userId,
+          // If user has no localUnitId, use -1 so this safely returns 0 instead of
+          // accidentally counting every recruit in the system.
+          localUnitId: user?.localUnitId || -1,
+        },
+      });
+
+      const [totalRecruits, localRecruits] = await Promise.all([totalRecruitsPromise, localRecruitsPromise]);
+
+      const role = (user?.role as string) ?? 'CWCMember';
       let target = 0;
       let nextMilestone = '';
+      let isLeader = false;
 
-      // CASE 1: Ordinary Member (trying to become President)
-      if (role === 'Member') {
+      if (['Member', 'CWCMember', 'ExtendedMember', null as any].includes(role as any)) {
         target = 5;
-        nextMilestone = 'Recruit 5 to become CWC President';
+        nextMilestone = 'Recruit 5 members in your Local Unit to become CWC President';
+        isLeader = false;
+      } else {
+        target = 0;
+        nextMilestone = 'Complete Weekly Tasks to earn Badges';
+        isLeader = true;
       }
 
-      // CASE 2: CWC President (needs 5 core + 20 general = 25 total)
-      else if (role === 'CWCPresident') {
-        target = 25;
-        nextMilestone = 'Complete your Presidential Quota (20 General Members)';
-      }
-
-      // CASE 3: CWC Member (0 core + 20 general = 20 total)
-      else if (['CWCMember', 'ExtendedMember'].includes(role)) {
-        target = 20;
-        nextMilestone = 'Complete your Member Quota';
-      }
-
-      // CASE 4: Upper management / others (APC/PPC/SSP/etc.)
-      else {
-        target = 25;
-        nextMilestone = 'Maintain Leadership Status';
-      }
-
-      const remaining = Math.max(target - totalRecruits, 0);
+      const remaining = isLeader ? 0 : Math.max(target - localRecruits, 0);
 
       return {
         role,
         total: totalRecruits,
+        localTotal: localRecruits,
         target,
         remaining,
         nextMilestone,
+        isLeader,
       };
     } catch (error) {
       this.logger.error('recruitmentProgress failed', error as any);
-      return { role: 'Member', total: 0, target: 5, remaining: 5 };
+      return { role: 'CWCMember', total: 0, localTotal: 0, target: 5, remaining: 5, isLeader: false };
     }
   }
 
@@ -262,10 +329,8 @@ export class UsersService {
 
     if (!baseUser) throw new BadRequestException('User not found');
 
-    let localUnit: any = null;
-    if (baseUser.localUnitId) {
-      try {
-        localUnit = await this.prisma.localUnit.findUnique({
+    const localUnitPromise = baseUser.localUnitId
+      ? this.prisma.localUnit.findUnique({
           where: { id: baseUser.localUnitId },
           select: {
             id: true,
@@ -279,17 +344,37 @@ export class UsersService {
               },
             },
           },
-        });
-      } catch {
-        localUnit = null;
-      }
-    }
+        }).catch(() => null)
+      : Promise.resolve(null);
 
     // Fetch primary committee membership (for CWC name on ID card)
-    const committeeMember = await this.prisma.committeeMember.findFirst({
+    const committeeMemberPromise = this.prisma.committeeMember.findFirst({
       where: { userId: userId },
       include: { committee: { select: { name: true } } },
-    });
+    }).catch(() => null);
+
+    const recruitsCountPromise = this.prisma.user.count({ where: { referredByUserId: userId } });
+
+    // votesCast is non‑critical for the dashboard; if the Vote model/table is not
+    // present or any error occurs here, just default to 0 instead of throwing 500.
+    const votesCastPromise = (async () => {
+      try {
+        const prismaAny = this.prisma as any;
+        if (prismaAny.vote && typeof prismaAny.vote.count === 'function') {
+          return await prismaAny.vote.count({ where: { voterUserId: userId } });
+        }
+      } catch {
+        // Ignore
+      }
+      return 0;
+    })();
+
+    const [localUnit, committeeMember, recruitsCount, votesCast] = await Promise.all([
+      localUnitPromise,
+      committeeMemberPromise,
+      recruitsCountPromise,
+      votesCastPromise,
+    ]);
 
     const user = {
       id: baseUser.id,
@@ -302,20 +387,6 @@ export class UsersService {
       localUnit,
       cwcName: committeeMember?.committee?.name ?? null,
     };
-
-    const recruitsCount = await this.prisma.user.count({ where: { referredByUserId: userId } });
-
-    // votesCast is non‑critical for the dashboard; if the Vote model/table is not
-    // present or any error occurs here, just default to 0 instead of throwing 500.
-    let votesCast = 0;
-    try {
-      const prismaAny = this.prisma as any;
-      if (prismaAny.vote && typeof prismaAny.vote.count === 'function') {
-        votesCast = await prismaAny.vote.count({ where: { voterUserId: userId } });
-      }
-    } catch {
-      votesCast = 0;
-    }
 
     return { user, recruitsCount, votesCast };
   }
