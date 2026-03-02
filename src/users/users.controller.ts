@@ -34,22 +34,11 @@ export class UsersController {
   }
 
   @Post('set-pin-with-token')
+  @UseGuards(AuthGuard)
   async setPinWithToken(@Req() req: any, @Body() dto: any) {
     const pin = String(dto?.pin || '');
-    const authHeader = String(req?.headers?.authorization || '');
 
-    // Local dev fallback used by forgot-PIN simulation flow
-    if (authHeader.startsWith('Bearer dev-token:')) {
-      const phone = authHeader.slice('Bearer dev-token:'.length).trim();
-      return this.usersService.setPinByPhoneForDev(phone, pin);
-    }
-
-    // Optional local fallback if frontend passes phone directly in dev mode
-    if ((process.env.AUTH_DEV_MODE === 'true') && dto?.phone) {
-      return this.usersService.setPinByPhoneForDev(String(dto.phone), pin);
-    }
-
-    // Standard authenticated flow (requires valid auth middleware earlier in stack)
+    // Standard authenticated flow (requires valid AuthGuard to populate req.user)
     const userId = req?.user?.id;
     if (!userId) {
       throw new HttpException({

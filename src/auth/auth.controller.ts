@@ -27,11 +27,24 @@ export class AuthController {
     async verifyOtp(@Body() body: { phone: string; code: string }) {
         if (!body.phone || !body.code) throw new BadRequestException('Phone and Code are required');
 
-        const isValid = await this.otpService.verifyOtp(body.phone, body.code);
-        if (!isValid) throw new UnauthorizedException('Invalid or expired OTP');
+        const result = await this.otpService.verifyOtp(body.phone, body.code);
+        if (!result.success) throw new UnauthorizedException(result.message || 'Invalid or expired OTP');
 
         // Find the user to issue a JWT
-        const user = await (this.prisma as any).user.findUnique({ where: { phone: body.phone } });
+        const cleanPhone = body.phone.replace(/[^0-9]/g, '');
+        const searchPhone = cleanPhone.slice(-10);
+        const standardFormat = `+91${searchPhone}`;
+
+        const user = await (this.prisma as any).user.findFirst({
+            where: {
+                OR: [
+                    { phone: body.phone },
+                    { phone: searchPhone },
+                    { phone: `0${searchPhone}` },
+                    { phone: standardFormat },
+                ],
+            },
+        });
 
         if (!user) {
             // If user doesn't exist, we might return a status saying "OTP Verified, proceed to register"

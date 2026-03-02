@@ -16,9 +16,9 @@ export class AuthGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<Request & { user?: any; auth?: any }>();
     // Dev mode bypass for local testing: use Authorization: Dev <userId> or x-dev-user-id header
     // Dev mode bypass for local testing: use Authorization: Dev <userId> or x-dev-user-id header
+    const authHeader = (req.headers['authorization'] as string) || '';
     if (process.env.AUTH_DEV_MODE === 'true') {
       try {
-        const authHeader = (req.headers['authorization'] as string) || '';
         const devHeader = (req.headers['x-dev-user-id'] as string) || '';
         let devUserId: number | null = null;
         if (authHeader?.startsWith('Dev ')) {
@@ -37,12 +37,30 @@ export class AuthGuard implements CanActivate {
           (req as any).user = user;
           return true;
         }
+
+        // Handle the frontend's specific dev-token format for PIN resets
+        if (authHeader.startsWith('Bearer dev-token:')) {
+          const phone = authHeader.slice('Bearer dev-token:'.length).trim();
+          const cleanPhone = phone.replace(/[^0-9]/g, '');
+          const searchPhone = cleanPhone.slice(-10);
+          const standardFormat = `+91${searchPhone}`;
+          const user = await (this.prisma as any).user.findFirst({
+            where: {
+              OR: [
+                { phone: phone },
+                { phone: searchPhone },
+                { phone: `0${searchPhone}` },
+                { phone: standardFormat },
+              ],
+            },
+          });
+          if (!user) throw new UnauthorizedException('User not found for dev-token');
+          (req as any).auth = { dev: true, phone };
+          (req as any).user = user;
+          return true;
+        }
       } catch (error) {
         console.error('AuthGuard Dev mode validation failed:', error);
-        // Fallthrough to regular auth or throw
-        // If we found a dev header but failed DB, likely DB issue. 
-        // Failing safely to allow standard auth check (which might also fail if DB down)
-        // prevents immediate 500, but unauthorized is better than 500.
       }
     }
 
