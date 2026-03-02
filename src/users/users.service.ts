@@ -320,6 +320,7 @@ export class UsersService {
           memberId: true,
           photoUrl: true,
           localUnitId: true,
+          createdAt: true,
         },
       });
     } catch (e) {
@@ -331,20 +332,20 @@ export class UsersService {
 
     const localUnitPromise = baseUser.localUnitId
       ? this.prisma.localUnit.findUnique({
-          where: { id: baseUser.localUnitId },
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            vidhansabha: {
-              select: {
-                id: true,
-                name: true,
-                loksabha: { select: { id: true, name: true } },
-              },
+        where: { id: baseUser.localUnitId },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          vidhansabha: {
+            select: {
+              id: true,
+              name: true,
+              loksabha: { select: { id: true, name: true } },
             },
           },
-        }).catch(() => null)
+        },
+      }).catch(() => null)
       : Promise.resolve(null);
 
     // Fetch primary committee membership (for CWC name on ID card)
@@ -386,6 +387,7 @@ export class UsersService {
       photoUrl: baseUser.photoUrl,
       localUnit,
       cwcName: committeeMember?.committee?.name ?? null,
+      createdAt: baseUser.createdAt,
     };
 
     return { user, recruitsCount, votesCast };
@@ -428,7 +430,7 @@ export class UsersService {
 
   async uploadProfilePhoto(userId: number, file: any) {
     if (!file) throw new BadRequestException('No file provided');
-    const allowed = ['image/jpeg', 'image/png'];
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowed.includes(file.mimetype)) throw new BadRequestException('Only JPG/PNG are allowed');
     if (file.size > 2 * 1024 * 1024) throw new BadRequestException('Max file size is 2MB');
 
