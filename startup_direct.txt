@@ -1,0 +1,60 @@
+﻿
+> api@0.0.1 start
+> nest start
+
+[32m[Nest] 14984  - [39m24/02/2026, 3:38:15 pm [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+node.exe : [31m[Nest] 14984  - 
+[39m24/02/2026, 3:38:15 pm 
+[31m  ERROR[39m 
+[38;5;3m[ExceptionHandler] 
+[39mError: Config validation 
+error: "DATABASE_URL" is 
+required. "JWT_SECRET" is 
+required
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Users\samee\AppData\Roaming\ 
+...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo          : No 
+   tSpecified: ([31m[Nest] 149  
+  ...ET" is required:String) [   
+ ], RemoteException
+    + FullyQualifiedErrorId : Na 
+   tiveCommandError
+ 
+    at ConfigModule.forRoot [90m
+(C:\Users\samee\Downloads\Archive
+\api\[39mnode_modules\[4m@nestj
+s[24m\config\dist\config.module.
+js:96:23[90m)[39m
+    at Object.<anonymous> [90m(C
+:\Users\samee\Downloads\Archive\a
+pi\[39msrc\app.module.ts:21:18[
+90m)[39m
+[90m    at Module._compile (node
+:internal/modules/cjs/loader:1706
+:14)[39m
+[90m    at Object..js (node:inte
+rnal/modules/cjs/loader:1839:10)
+[39m
+[90m    at Module.load (node:int
+ernal/modules/cjs/loader:1441:32)
+[39m
+[90m    at Function._load (node:
+internal/modules/cjs/loader:1263:
+12)[39m
+[90m    at 
+TracingChannel.traceSync (node:di
+agnostics_channel:322:14)[39m
+[90m    at wrapModuleLoad (node:
+internal/modules/cjs/loader:237:2
+4)[39m
+[90m    at Module.require (node:
+internal/modules/cjs/loader:1463:
+12)[39m
+[90m    at require (node:interna
+l/modules/helpers:147:16)[39m

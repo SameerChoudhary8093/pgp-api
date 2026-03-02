@@ -1,0 +1,11 @@
+Testing Balance: http://sms.indiaitinfotech.com/getbalance.jsp?user=pgpparty&password=****&accusage=1 
+Response: 
+
+
+
+
+
+
+    
+
+<balance><trans>94.0</trans><expirydate>2027-02-27</expirydate></balance>

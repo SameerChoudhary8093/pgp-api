@@ -2,95 +2,57 @@ import 'reflect-metadata';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// Explicitly load .env from the current directory
-console.log('Current CWD:', process.cwd());
-console.log('Current __dirname:', __dirname);
+// Load .env
+dotenv.config();
 
-let envPath = path.resolve(process.cwd(), '.env');
-let result = dotenv.config({ path: envPath });
-
-if (result.error) {
-  console.warn('Failed to load .env from CWD. Trying relative to __dirname...');
-  // __dirname is usually dist/src. We need to go up to apps/api root.
-  envPath = path.resolve(__dirname, '../../.env');
-  result = dotenv.config({ path: envPath });
-}
-
-if (result.error) {
-  console.log('CRITICAL: Error loading .env file from ' + envPath, result.error);
-} else {
-  console.log('.env loaded successfully from ' + envPath + '. DATABASE_URL is ' + (process.env.DATABASE_URL ? 'set' : 'MISSING'));
-}
-
-import { NestFactory, HttpAdapterHost } from '@nestjs/core'; // Combined import
+import { NestFactory, HttpAdapterHost } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import helmet from 'helmet';
-import { AllExceptionsFilter } from './all-exceptions.filter'; // moved here
-
-let cachedApp: any;
+import { AllExceptionsFilter } from './all-exceptions.filter';
 
 async function bootstrap() {
-  if (!cachedApp) {
-    const app = await NestFactory.create<NestExpressApplication>(AppModule);
-    // Security: Helmet HTTP headers
-    app.use(helmet());
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-    // CORS configuration
-    app.enableCors({
-      origin: process.env.CORS_ORIGIN || '*',
-      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-      credentials: true,
-    });
+  // Security: Helmet HTTP headers - disabling contentSecurityPolicy for local dev to avoid issues
+  app.use(helmet({
+    contentSecurityPolicy: false,
+  }));
 
-    // Global Pipes
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-
-    // Global Exception Filter
-    const httpAdapter = app.get(HttpAdapterHost);
-    app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
-
-    // Serve uploads folder statically
-    // Use process.cwd() to match the upload service path (apps/api/uploads)
-    app.useStaticAssets(join(process.cwd(), 'uploads'), {
-      prefix: '/uploads/',
-    });
-
-    await app.init();
-    cachedApp = app.getHttpAdapter().getInstance();
-  }
-  return cachedApp;
-}
-
-// For non-Vercel environments (local, Docker, Railway, etc.)
-if (!process.env.VERCEL) {
-  bootstrap().then(async (app) => {
-    const port = process.env.PORT ? Number(process.env.PORT) : 3000;
-    await app.listen(port);
-    console.log(`Server listening on port ${port}`);
+  // CORS configuration
+  app.enableCors({
+    origin: '*', // Allow all for local dev
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
   });
+
+  // Global Prefix
+  app.setGlobalPrefix('v1');
+
+  // Global Pipes
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true
+  }));
+
+  // Global Exception Filter
+  const httpAdapter = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
+
+  // Serve uploads folder statically
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads/',
+  });
+
+  const port = process.env.PORT ? Number(process.env.PORT) : 3005;
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 Server listening on port ${port} with prefix /v1`);
+  console.log(`CORS enabled for all origins`);
 }
 
-// Export for Vercel
-const handler = async (req: any, res: any) => {
-  try {
-    const app = await bootstrap();
-    return app(req, res);
-  } catch (err: any) {
-    console.error('Bootstrap error:', err);
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: err.message, stack: err.stack }));
-  }
-};
-
-export default handler;
-
-// Force commonjs export for Vercel to ensure it finds the entry point
-if (typeof module !== 'undefined') {
-  module.exports = handler;
-}
-
-
+bootstrap().catch(err => {
+  console.error('Failed to start server:', err);
+});

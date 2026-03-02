@@ -1,0 +1,13 @@
+﻿Testing: http://sms.indiaitinfotech.com/sendsms.jsp?user=pgpparty&password=****&senderid=IPGPTY&mobiles=%2B917727079782&sms=789645%20is%20your%20verification%20code%20for%20People's%20Green%20Party.&entityid=1701165113133141933&tempid=1707177217726034212&accusage=1&unicode=1
+Response: 
+<smslist>
+<sms>
+<status>error</status>
+<code>1002</code>
+<reason>InvalidSenderid</reason>
+<clientsmsid>0</clientsmsid>
+<messageid>-1</messageid>
+<mobileno>0</mobileno>
+</sms>
+</smslist>
+

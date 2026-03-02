@@ -4,6 +4,9 @@ import { PrismaService } from '../prisma.service';
 import { SupabaseService } from './supabase.service';
 import { AuthGuard } from './auth.guard';
 import { RolesGuard } from './roles.guard';
+import { SmsService } from './sms.service';
+import { OtpService } from './otp.service';
+import { AuthController } from './auth.controller';
 
 @Module({
   imports: [
@@ -12,7 +15,15 @@ import { RolesGuard } from './roles.guard';
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  providers: [PrismaService, SupabaseService, AuthGuard, RolesGuard],
-  exports: [SupabaseService, AuthGuard, RolesGuard, JwtModule],
+  controllers: [AuthController],
+  providers: [
+    PrismaService,
+    SupabaseService,
+    AuthGuard,
+    RolesGuard,
+    SmsService,
+    OtpService
+  ],
+  exports: [SupabaseService, AuthGuard, RolesGuard, JwtModule, OtpService, SmsService],
 })
-export class AuthModule {}
+export class AuthModule { }

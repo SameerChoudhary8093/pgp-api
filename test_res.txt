@@ -1,0 +1,12 @@
+Testing IPGPTY 
+Response: 
+<smslist>
+<sms>
+<status>error</status>
+<code>1002</code>
+<reason>InvalidSenderid</reason>
+<clientsmsid>0</clientsmsid>
+<messageid>-1</messageid>
+<mobileno>0</mobileno>
+</sms>
+</smslist>
